@@ -240,7 +240,7 @@
 - hedged request 的代价和触发条件。
 - 为什么“平均 CPU 不高”不代表系统健康。
 
-**和课程的关系**：INFRA 02第 11 讲的可观测性；INFRA 01 MapReduce 的 straggler 也是同一个问题。
+**和课程的关系**：INFRA 02 第 13 讲的可观测性与性能；INFRA 01 MapReduce 的 straggler 也是同一个问题。
 
 ### Firecracker (2020)
 
@@ -262,7 +262,7 @@
 - 哪些 workload 适合 gVisor，哪些不适合。
 - 隔离强度和性能的取舍。
 
-**和课程的关系**：INFRA 02第 8 讲的 sandbox runtime；INFRA 03第 2 讲的“边界放在哪一层”。
+**和课程的关系**：INFRA 02 第 10 讲的 sandbox runtime；INFRA 03 第 2 讲的“边界放在哪一层”。
 
 ## INFRA 03 · Agent OS readings
 
