@@ -62,7 +62,7 @@ content/          Markdown sources
   papers.md       readings
   glossary.md     glossary
   setup.md        Linux/WSL2 environment
-  rules.md        policies
+  start.md        guide
 assets/           style.css, app.js
 judge/            local grading scripts, contracts, and test configs
 template.html     Pandoc template

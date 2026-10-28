@@ -2,7 +2,7 @@
 
 > 21 lectures · 5 labs · Go
 >
-> 参考 MIT 6.5840 Spring 2026 的日程；本站是原创中文课程，不复制讲义原文，也不包含 lab 代码或答案。
+> 参考 MIT 6.5840 Spring 2026 的日程。
 
 ## 课程说明
 
@@ -89,4 +89,4 @@ Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。时间有限时可以做到
 
 ## 阅读
 
-[阅读](papers.html) 有每篇论文的一句话定位和阅读重点。课程页与 lab 原文在 [MIT 6.5840](https://pdos.csail.mit.edu/6.5840/)；本站的 [讲义](lectures.html) 是原创中文导读。另加一篇 *Time, Clocks, and the Ordering of Events*（1978）作为顺序问题的补充。
+[阅读](papers.html) 有每篇论文的一句话定位和阅读重点。课程页与 lab 原文在 [MIT 6.5840](https://pdos.csail.mit.edu/6.5840/)；[讲义](lectures.html) 是中文导读。另加一篇 *Time, Clocks, and the Ordering of Events*（1978）作为顺序问题的补充。

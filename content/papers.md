@@ -1,11 +1,8 @@
 # 阅读
 
-> 官方 schedule 上有每篇论文的 PDF 链接和阅读问题：
-> https://pdos.csail.mit.edu/6.5840/schedule.html
+> 官方 schedule：https://pdos.csail.mit.edu/6.5840/schedule.html
 >
-> 本站只写一句话定位和阅读重点，不翻译论文全文。论文版权归原作者/出版方所有。
->
-> INFRA 01 的核心论文在前；INFRA 02/03 的 readings 在后；最后是规范和阅读顺序。
+> 论文版权归原作者/出版方所有。
 
 ## 怎么读
 

@@ -60,22 +60,17 @@ INFRA 01 和 CN1 已有本地评分脚本，放在仓库的 `judge/` 目录：
 ./judge/run.sh infra01 lab1
 ```
 
-脚本只检查行为，不提供实现。完成一门课的标准：
+完成一门课的标准：
 
 - 评分脚本的必做项通过；
 - 能不看代码讲清楚机制、失败模式和测试在测什么；
-- 能回答课程页的 design questions；
-- 代码私有，不公开可直接复制的答案。
+- 能回答课程页的 design questions。
 
 用法见 [作业与实验](labs.html#judge)。
 
 ## 阅读
 
 阅读以论文、白皮书和规范为主：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [阅读](papers.html)。
-
-## 课程规则
-
-独立完成、代码私有、不抄答案；内核实验只在一次性的 VM/WSL2 里做；不使用真实凭证。详见 [课程规则](rules.html)。
 
 ## 时间安排
 

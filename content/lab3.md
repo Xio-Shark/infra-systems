@@ -8,7 +8,7 @@
 >
 > [上一个：Lab 2](lab2.html) · [返回作业](labs.html) · [下一个：Lab 4](lab4.html)
 >
-> 必读 Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`。这一页只给任务、接口、约束和验收，不给实现。
+> 必读 Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`。
 
 ## 目标
 

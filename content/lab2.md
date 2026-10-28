@@ -7,8 +7,6 @@
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2` · [评分标准](grading.html)
 >
 > [上一个：Lab 1](lab1.html) · [返回作业](labs.html) · [下一个：Lab 3](lab3.html)
->
-> 这一页只给任务、约束和验收，不给实现。评分脚本在 `judge/tests/infra01/lab2.sh`。
 
 ## 目标
 
