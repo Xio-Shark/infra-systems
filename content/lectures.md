@@ -1,8 +1,7 @@
 # INFRA 01 · 讲义
 
 > 21 讲导读，按 MIT 6.5840 Spring 2026 的日程整理。每一讲给出一句话定位、核心内容、阅读材料、和 lab 的关系、自测问题。
-> 这不是讲义原文的翻译，而是原创中文导读；论文和讲义请读官方链接：
-> https://pdos.csail.mit.edu/6.5840/schedule.html
+> 这不是讲义原文的翻译，而是原创中文导读；论文和讲义请读[官方 schedule](https://pdos.csail.mit.edu/6.5840/schedule.html)。
 >
 > 课程页、labs 和 design questions 在 [INFRA 01](course-map.html)。
 

@@ -1,6 +1,6 @@
 # 阅读
 
-> 官方 schedule：https://pdos.csail.mit.edu/6.5840/schedule.html
+> 官方 schedule：[pdos.csail.mit.edu/6.5840/schedule.html](https://pdos.csail.mit.edu/6.5840/schedule.html)
 >
 > 论文版权归原作者/出版方所有。
 
@@ -57,7 +57,7 @@
 - 5.4.2 commit 规则（Figure 8）。
 - 7 节：日志压缩 / snapshot。
 
-**和 lab 的关系**：Lab 3 的全部内容。中文翻译：https://github.com/maemual/raft-zh_cn
+**和 lab 的关系**：Lab 3 的全部内容。中文翻译：[raft-zh_cn](https://github.com/maemual/raft-zh_cn)。
 
 ### [Time, Clocks, and the Ordering of Events (1978)](https://lamport.azurewebsites.net/pubs/time-clocks.pdf) {#time-clocks}
 
