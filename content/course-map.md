@@ -12,6 +12,15 @@
 
 五个 Go lab 把这些约束写成代码：MapReduce、单机 KV、Raft、基于 Raft 的 replicated state machine、分片 KV。Lab 3 是核心，通常需要 2–3 周；Lab 4/5 会复用它。
 
+## 怎么开始
+
+1. 读 [第 1 讲 MapReduce](lectures.html#lec1)。
+2. 打开 [Lab 1 任务书](lab1.html)，按“任务”和“硬性约束”实现。
+3. 跑 `LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`。
+4. 参考：[MapReduce 论文](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html)。
+
+作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
+
 ## 先修要求
 
 - 会 Go，或愿意在两周内补到能写并发程序。

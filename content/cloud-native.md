@@ -12,6 +12,15 @@
 
 十四讲按“从进程到集群”的顺序展开：namespace/cgroup/rootfs → OCI/CRI → 镜像/供应链 → Pod → 生命周期 → 网络 → 服务通信 → 存储 → 调度 → 隔离 → sidecar → 有状态 → 可观测性 → capstone。核心实验不需要 Kubernetes；kind/k3s 是可选进阶。
 
+## 怎么开始
+
+1. 读 [第 1 讲 从进程到容器](#cn1) 和 [第 2 讲 容器运行时](#cn2)。
+2. 打开 [CN1 任务书](#lab-cn1)，先做一个隔离 shell。
+3. 准备 rootfs 和实现后，跑 `SUBMISSION=./cn1 CN1_ROOTFS=/path ./judge/run.sh infra02 cn1`。
+4. 参考：[OCI Runtime Spec](papers.html)、[cgroup v2 文档](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-container.html)。
+
+作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
+
 ## 先修要求
 
 - 会 Linux 基本命令，知道进程、文件、socket。

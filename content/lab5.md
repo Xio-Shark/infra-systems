@@ -1,6 +1,12 @@
 # Lab 5 · Sharded KV
 
-> 官方页：https://pdos.csail.mit.edu/6.5840/labs/lab-shard1.html
+> **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 5/5**
+>
+> **先读**：[第 12 讲 Spanner](lectures.html#lec12) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-shard1.html) · [阅读](papers.html)
+>
+> **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5` · [评分标准](grading.html)
+>
+> [上一个：Lab 4](lab4.html) · [返回作业](labs.html)
 >
 > 这一页只给任务、约束和验收，不给实现。评分脚本在 `judge/tests/infra01/lab5.sh`。
 

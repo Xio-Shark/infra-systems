@@ -4,6 +4,18 @@
 >
 > 实验在单机 Linux 或 WSL2 上运行；2 vCPU、4 GB 内存、20 GB 磁盘即可，不需要 GPU 或多台机器。
 
+## 第一次来
+
+先选一门课，再按课程页的“怎么开始”做第一个作业。
+
+| 你想学 | 先看 | 第一个作业 | 评分 |
+|---|---|---|---|
+| 分布式、Go、Raft | [INFRA 01](course-map.html) | [Lab 1](lab1.html) | `./judge/run.sh infra01 lab1` |
+| 容器、Kubernetes 底层 | [INFRA 02](cloud-native.html) | [CN1](cloud-native.html#lab-cn1) | `./judge/run.sh infra02 cn1` |
+| agent 与内核（探索） | [INFRA 03](agent-os.html) | [AOS1](agent-os.html#lab-aos1) | 先按任务书自测 |
+
+作业都在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)；阅读材料在 [阅读](papers.html)。
+
 ## 课程说明
 
 INFRA 01 讲多台机器上的副本和共识；INFRA 02 讲一台机器上的容器、网络和存储；INFRA 03 探索 agent 调用工具时，内核应该提供哪些操作。三门课都要回答：**谁在写、什么时候算完成、失败后看到什么。**
@@ -55,7 +67,7 @@ INFRA 01 和 CN1 已有本地评分脚本，放在仓库的 `judge/` 目录：
 - 能回答课程页的 design questions；
 - 代码私有，不公开可直接复制的答案。
 
-用法见 [实验](labs.html#judge)。
+用法见 [作业与实验](labs.html#judge)。
 
 ## 阅读
 

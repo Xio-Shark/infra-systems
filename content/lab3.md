@@ -1,15 +1,14 @@
 # Lab 3 · Raft
 
-> 官方页：https://pdos.csail.mit.edu/6.5840/labs/lab-raft1.html
+> **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 3/5**
 >
-> 必读：Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`。
+> **先读**：[第 6 讲 Raft (1)](lectures.html#lec6) 和 [第 7 讲 Raft (2)](lectures.html#lec7) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-raft1.html) · [Raft 论文](https://raft.github.io/raft.pdf) · [中文翻译](https://github.com/maemual/raft-zh_cn)
 >
-> - 论文：https://raft.github.io/raft.pdf
-> - 结构建议：https://pdos.csail.mit.edu/6.5840/labs/raft-structure.txt
-> - 锁建议：https://pdos.csail.mit.edu/6.5840/labs/raft-locking.txt
-> - 中文翻译：https://github.com/maemual/raft-zh_cn
+> **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab3` · [评分标准](grading.html)
 >
-> 这一页只给任务、接口、约束和验收，不给实现。评分脚本在 `judge/tests/infra01/lab3.sh`。
+> [上一个：Lab 2](lab2.html) · [返回作业](labs.html) · [下一个：Lab 4](lab4.html)
+>
+> 必读 Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`。这一页只给任务、接口、约束和验收，不给实现。
 
 ## 目标
 

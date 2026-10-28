@@ -1,6 +1,12 @@
 # Lab 4 · Fault-tolerant KV
 
-> 官方页：https://pdos.csail.mit.edu/6.5840/labs/lab-kvraft1.html
+> **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 4/5**
+>
+> **先读**：[第 6 讲 Raft (1)](lectures.html#lec6) 和 [第 7 讲 Raft (2)](lectures.html#lec7) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvraft1.html) · [阅读](papers.html)
+>
+> **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab4` · [评分标准](grading.html)
+>
+> [上一个：Lab 3](lab3.html) · [返回作业](labs.html) · [下一个：Lab 5](lab5.html)
 >
 > 这一页只给任务、约束和验收，不给实现。评分脚本在 `judge/tests/infra01/lab4.sh`。
 

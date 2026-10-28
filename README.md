@@ -58,6 +58,7 @@ content/          Markdown sources
   lectures.md     INFRA 01 lecture notes
   labs.md         lab overview and local judge usage
   lab1.md … lab5.md  INFRA 01 lab task specs
+  grading.md      grading criteria and judge commands
   papers.md       readings
   glossary.md     glossary
   setup.md        Linux/WSL2 environment

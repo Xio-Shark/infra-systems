@@ -1,6 +1,12 @@
 # Lab 2 · KV Server 与锁
 
-> 官方页：https://pdos.csail.mit.edu/6.5840/labs/lab-kvsrv1.html
+> **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 2/5**
+>
+> **先读**：[第 2 讲 RPC and Threads](lectures.html#lec2) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvsrv1.html) · [阅读](papers.html)
+>
+> **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2` · [评分标准](grading.html)
+>
+> [上一个：Lab 1](lab1.html) · [返回作业](labs.html) · [下一个：Lab 3](lab3.html)
 >
 > 这一页只给任务、约束和验收，不给实现。评分脚本在 `judge/tests/infra01/lab2.sh`。
 
