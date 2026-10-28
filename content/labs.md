@@ -42,6 +42,8 @@ make shardkv     # Lab 5
 
 ## INFRA 03 · Agent OS
 
+> 这门课是探索性内容：Agent OS 没有公认标准，下面的实验和接口设计都是待验证的假设，不代表主流做法。
+
 | # | Lab | Build | Notes |
 |---|---|---|---|
 | AOS1 | Typed ABI and sandboxed exec | syscall table, `spawn`/`exec`, isolation | [AOS1](agent-os.html#lab-aos1) |

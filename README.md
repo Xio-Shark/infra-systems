@@ -1,5 +1,7 @@
 # Infra Systems
 
+Live site: https://xio-shark.github.io/infra-systems/
+
 A static course site for three courses:
 
 - **INFRA 01 · Distributed Systems** — 21 lectures, 5 Go labs, based on the MIT 6.5840 schedule.
