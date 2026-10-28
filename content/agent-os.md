@@ -8,7 +8,7 @@
 >
 > 核心实验只依赖内核原语：namespace、cgroup v2、overlayfs、seccomp、pidfd。不需要 GPU、KVM 或 Firecracker。
 
-## Course description
+## 课程说明
 
 今天的 agent 大多通过用户空间的接口操作计算机：`bash -c "..."`、HTTP 请求、浏览器点击、JSON 工具调用。这种方式很灵活，但不可靠。执行 `rm -rf build && make` 时，内核只看到一串字符串，不知道这些命令属于哪个任务；一个“写文件、调 API、更新数据库”的任务，第二步成功、第三步失败，没有可以恢复的检查点；一个工具继承了 shell 的全部权限，路径检查还存在 TOCTOU（检查与使用之间有时间差）；最后 agent 说“完成了”，你却没有证据。
 
@@ -22,15 +22,15 @@ Agent OS 不解决“让 agent 更聪明”的问题。它解决的是：**让 a
 
 这门课不认为现在已经有标准的 Agent OS。课程给出一张可以论证的操作表和原型，要求你为每个操作回答五个问题：原子性由什么保证、谁有权调用、重复调用会怎样、失败后留下什么状态、凭什么证明它发生过。你可以推翻这张表，但要给出更好的方案。
 
-## Prerequisites
+## 先修要求
 
 - INFRA 01 的 Lab 1–4，或等价的操作系统/分布式系统基础。
 - 会在 Linux 上写 Go、C 或 Rust；知道 syscall、文件描述符、fork/exec。
 - 在 Linux 或 WSL2 里有 root；内核实验只在一次性环境里做。
 
-## Schedule
+## 课程安排
 
-| # | Topic | Key question | Lab |
+| # | 主题 | 关键问题 | 实验 |
 |---|---|---|---|
 | 1 | From shell to syscall | 为什么 tool schema 不能当 OS 接口？ | [AOS1](#lab-aos1) |
 | 2 | Kernel/runtime boundary | 事务应该由哪一层负责？ | [AOS1](#lab-aos1) |
@@ -45,9 +45,9 @@ Agent OS 不解决“让 agent 更聪明”的问题。它解决的是：**让 a
 | 11 | ABI for LLMs | 怎么设计有类型、有错误分类的操作？ | [Capstone](#lab-aos-capstone) |
 | 12 | Capstone | 你的 Agent OS 能证明哪些性质？ | [Capstone](#lab-aos-capstone) |
 
-## Labs
+## 实验
 
-| # | Lab | Deliverable | Environment |
+| # | 实验 | 交付物 | 环境 |
 |---|---|---|---|
 | AOS1 | Typed ABI and sandboxed exec | syscall 表 + `spawn`/`exec` + 隔离 | Linux/WSL2 |
 | AOS2 | Workspace transaction | commit/rollback + 崩溃恢复 | Linux/WSL2 |
@@ -56,7 +56,7 @@ Agent OS 不解决“让 agent 更聪明”的问题。它解决的是：**让 a
 | AOS5 | Lease, fencing, audit | 双主拒绝 + hash chain + replay | Linux/WSL2 |
 | Capstone | Minimal Agent OS | 8–10 个操作 + 混沌测试 + 报告 | Linux/WSL2 |
 
-## Design questions
+## 设计问题
 
 1. 没有新的内核原语时，多个文件能否做到严格原子提交？证明或反驳。
 2. 设计一个权限模型，让 LLM 不需要理解整张权限图，也能申请刚好够用的权限。
@@ -65,22 +65,22 @@ Agent OS 不解决“让 agent 更聪明”的问题。它解决的是：**让 a
 5. `indeterminate`（结果未知）可以避免吗？如果不能，接口应该怎么表达它？
 6. 为会暂停几分钟的 agent（GC、人工审批）设计租约和 fencing 协议；旧 owner 恢复后会发生什么？
 
-## Environment
+## 环境
 
 - 单机 Linux 或 WSL2（Ubuntu 24.04），2 vCPU、4 GB 内存、20 GB 磁盘。
 - 核心实验只依赖 namespace、cgroup v2、overlayfs、seccomp、pidfd；不需要 GPU、KVM 或多节点集群。
 - Landlock 在部分 WSL2 内核不可用；AOS3 可以只用 seccomp + `openat2` + `pivot_root`。
 - CRIU、Firecracker、eBPF 是可选进阶；没有 KVM 就跳过 Firecracker，不要用软件模拟硬撑。
 
-## Assessment
+## 考核
 
 - 原子性测试能证明“要么全做、要么不做”；权限逃逸测试全部失败。
 - 审计日志能重放一次任务；报告写清楚哪些副作用无法回滚。
 - 能回答至少 3 个 design questions；代码私有。
 
-## Readings
+## 阅读
 
-[Readings](papers.html) 有 seL4、gVisor、AIOS、Saga、Unix、End-to-End Arguments 的定位；规范读 OCI Runtime Spec、cgroup v2、seccomp、Landlock、overlayfs、pidfd 的内核文档。
+[阅读](papers.html) 有 seL4、gVisor、AIOS、Saga、Unix、End-to-End Arguments 的定位；规范读 OCI Runtime Spec、cgroup v2、seccomp、Landlock、overlayfs、pidfd 的内核文档。
 
 以下是 12 讲的讲义，按课程顺序排列。
 

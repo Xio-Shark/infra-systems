@@ -1,10 +1,10 @@
-# INFRA 02 · Cloud-Native Systems
+# INFRA 02 · 云原生系统
 
 > 14 lectures · 5 labs · Linux/WSL2
 >
 > 核心实验在单机 Linux 或 WSL2 上完成：2 vCPU、4 GB 内存、20 GB 磁盘；不需要 GPU、KVM 或多节点集群。
 
-## Course description
+## 课程说明
 
 云原生很容易学成一套 YAML 语法：`kubectl apply`、`Deployment`、`Service`、`Ingress`。但真正的事故很少出在 YAML 写错，而是出在**多容器**的边界上：init container 没跑完 app 就起来了；sidecar 没退出，Pod 卡在 Terminating；两个容器写同一个 volume，读到一个写了一半的文件；一个容器 OOM，整个 Pod 被驱逐；Service 的 VIP 能通，但 sidecar 里的 DNS 不通。
 
@@ -12,15 +12,15 @@
 
 十四讲按“从进程到集群”的顺序展开：namespace/cgroup/rootfs → OCI/CRI → 镜像/供应链 → Pod → 生命周期 → 网络 → 服务通信 → 存储 → 调度 → 隔离 → sidecar → 有状态 → 可观测性 → capstone。核心实验不需要 Kubernetes；kind/k3s 是可选进阶。
 
-## Prerequisites
+## 先修要求
 
 - 会 Linux 基本命令，知道进程、文件、socket。
 - 会 Go 或 C；能读 RFC/规范。
 - 最好做过 INFRA 01 的 Lab 1–2，但不是硬性要求。
 
-## Schedule
+## 课程安排
 
-| # | Topic | Key question | Lab |
+| # | 主题 | 关键问题 | 实验 |
 |---|---|---|---|
 | 1 | From process to container | 容器到底是什么？ | [CN1](#lab-cn1) |
 | 2 | Runtime and CRI | 谁持有 netns、stdio、僵尸进程？ | [CN1](#lab-cn1) |
@@ -37,9 +37,9 @@
 | 13 | Observability and performance | p99 从哪里来？ | [CN5](#lab-cn5) |
 | 14 | Capstone | 坏了能不能解释？ | [CN5](#lab-cn5) |
 
-## Labs
+## 实验
 
-| # | Lab | Deliverable | Environment |
+| # | 实验 | 交付物 | 环境 |
 |---|---|---|---|
 | CN1 | Build a container from scratch | 隔离 shell + cgroup 内存限制；可选：手写 OCI layout | Linux/WSL2 |
 | CN2 | Mini Pod lifecycle | pause/init/app/sidecar + 信号 | Linux/WSL2 |
@@ -47,7 +47,7 @@
 | CN4 | Workspace transaction | overlayfs commit/rollback + 崩溃测试 | Linux/WSL2 |
 | CN5 | Capstone | 迷你多容器平台 + 混沌测试 | Linux/WSL2 |
 
-## Design questions
+## 设计问题
 
 1. Kubernetes 为什么把 Pod 而不是 container 作为调度单位？如果只调度容器，会失去什么？
 2. Sidecar 给你 mTLS、重试、指标，但多一次跳转和一套生命周期。什么场景下不值得？设计一个“不用 sidecar 更好”的例子。
@@ -57,22 +57,22 @@
 6. 镜像 tag、digest、签名和 SBOM 各自能保证什么？设计一条从源码到运行的供应链，指出其中最弱的一环。
 7. 一个服务有 3 个副本，客户端超时 1 秒、失败后重试 2 次。下游变慢时会发生什么？画出请求量和延迟的变化。
 
-## Environment
+## 环境
 
 - 单机 Linux 或 WSL2（Ubuntu 24.04），2 vCPU、4 GB 内存、20 GB 磁盘。
 - 核心实验只依赖 namespace、cgroup v2、overlayfs、veth、iptables；不需要 Kubernetes。
 - kind/k3s 可选；如果 WSL2 的网络限制影响 CN3，用一台 Linux VM。
 - 不需要 GPU、KVM、多节点集群。
 
-## Assessment
+## 考核
 
 - 每个 lab 通过验收标准；CN5 附一份故障报告。
 - 能不看代码讲清楚多容器的生命周期、共享资源、失败模式。
 - 回答至少 3 个 design questions；代码私有。
 
-## Readings
+## 阅读
 
-[Readings](papers.html) 有论文、白皮书和规范的定位；重点读 OCI Image/Runtime Spec、CNI/CSI Spec、Kubernetes Pod Lifecycle 文档、Borg、Firecracker。
+[阅读](papers.html) 有论文、白皮书和规范的定位；重点读 OCI Image/Runtime Spec、CNI/CSI Spec、Kubernetes Pod Lifecycle 文档、Borg、Firecracker。
 
 以下是 14 讲的讲义，按课程顺序排列。
 

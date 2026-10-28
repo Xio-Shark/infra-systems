@@ -1,4 +1,4 @@
-# Readings
+# 阅读
 
 > 官方 schedule 上有每篇论文的 PDF 链接和阅读问题：
 > https://pdos.csail.mit.edu/6.5840/schedule.html
@@ -7,14 +7,14 @@
 >
 > INFRA 01 的核心论文在前；INFRA 02/03 的 readings 在后；最后是规范和阅读顺序。
 
-## How to read
+## 怎么读
 
 1. 先读 Abstract、Introduction、Conclusion，回答“它解决什么问题”。
 2. 再看设计：数据结构、协议、失败模式。
 3. 最后看 evaluation：它测了什么、没测什么、代价是什么。
 4. 用中文写 5 句话：问题、假设、机制、代价、和上一篇的关系。
 
-## INFRA 01 · Core readings
+## INFRA 01 · 核心阅读
 
 ### MapReduce (2004)
 
@@ -216,7 +216,7 @@
 
 **和 lab 的关系**：Lab 4/5 的配置变更、shard 迁移涉及原子提交。
 
-## INFRA 02 · Cloud-native readings
+## INFRA 02 · 云原生阅读
 
 下面这些不是 6.5840 schedule 上的必读论文，是INFRA 02/03的补充阅读。不要一次读完；每篇写 5 句话：问题、假设、机制、代价、和课程的关系。
 
@@ -264,7 +264,7 @@
 
 **和课程的关系**：INFRA 02 第 10 讲的 sandbox runtime；INFRA 03 第 2 讲的“边界放在哪一层”。
 
-## INFRA 03 · Agent OS readings
+## INFRA 03 · Agent OS 阅读
 
 > Agent OS 是探索方向，这些论文和系统不代表主流共识。读的时候重点看它们各自解决了什么、没解决什么，不要把这些设计当成标准答案。
 
@@ -323,7 +323,7 @@
 
 **和课程的关系**：INFRA 03 的对照阅读。AIOS 是“用户态 agent OS”的一种尝试；读完问自己：哪些操作必须放进内核，哪些可以留在 runtime。
 
-## Specifications
+## 规范
 
 规范不是论文；不要从头读到尾，带着问题查章节。
 
@@ -343,7 +343,7 @@
 | [in-toto](https://in-toto.io/) | 供应链各步骤的签名与验证 | INFRA 02 |
 | [SPDX](https://spdx.dev/) | SBOM（软件物料清单）格式 | INFRA 02 |
 
-## Reading order
+## 阅读顺序
 
 1. **MapReduce** → 做 Lab 1。
 2. **Time, Clocks, and the Ordering of Events** → 理解逻辑顺序，再进入 Raft。

@@ -1,10 +1,10 @@
-# Environment
+# 环境
 
 > 所有核心实验在单机 Linux 或 WSL2 上完成：2 vCPU、4 GB 内存、20 GB 空闲磁盘。不需要 GPU、KVM 或多节点集群。
 >
 > 8 GB 内存更舒服；4 GB 足够跑 INFRA 01/02 和大部分 INFRA 03 实验。
 
-## 1. Choose an environment
+## 1. 选择环境
 
 | 环境 | 适用 | 说明 |
 |---|---|---|
@@ -14,7 +14,7 @@
 
 INFRA 02/03 需要 namespace、cgroup v2、mount、overlayfs、seccomp；这些在 WSL2 里通常都有。如果某个特性缺失，用一台 Linux VM，不要改 Windows 宿主。
 
-## 2. WSL2 setup
+## 2. WSL2 安装
 
 在 Windows PowerShell：
 
@@ -45,7 +45,7 @@ sudo unshare -pf --mount-proc /bin/sh     # 应进入新的 PID/mount namespace
 
 如果 `cgroup2fs` 没有挂载，先确认 systemd 已启用；仍然不行就换 Linux VM。
 
-## 3. Common tools
+## 3. 常用工具
 
 ```bash
 sudo apt update
@@ -62,7 +62,7 @@ go version
 
 也可以用官方 tarball；不要把 Go 装到需要 root 才能写的工作区。
 
-## 4. INFRA 01：Go 与 lab 仓库
+## 4. INFRA 01：Go 与实验仓库
 
 ```bash
 cd ~/labs
@@ -120,7 +120,7 @@ make RUN="-run 5A" shardkv
 
 Lab 1 第一次跑 `make mr` 会挂住，因为 `Done()` 永远返回 false。这是预期的；先实现 `Done()`，或临时改成 `true` 看失败输出。
 
-## 5. INFRA 02/03：kernel checks
+## 5. INFRA 02/03：内核检查
 
 ```bash
 # network namespace
@@ -153,7 +153,7 @@ cat /sys/fs/cgroup/lab/cgroup.controllers
 
 如果 `unshare` 报 `Operation not permitted`，确认你在 WSL2/Linux 里、有 root，或 user namespace 没有被发行版禁用。Ubuntu 24.04 对非特权 user namespace 有 AppArmor 限制；在 VM 里调整，不要改宿主。
 
-## 6. Optional advanced tools
+## 6. 可选进阶工具
 
 这些不是核心实验的硬性要求；没有对应硬件就跳过。
 
@@ -176,7 +176,7 @@ sudo apt install -y bpftrace runc bubblewrap criu stress-ng skopeo umoci
 
 `criu check` 失败不代表课程做不下去；AOS4 的核心是工作区快照，CRIU 是选做。
 
-## 7. Git and code privacy
+## 7. Git 与代码隐私
 
 INFRA 01 要求代码私有。建议：
 
@@ -187,9 +187,9 @@ git add ...
 git commit -m "lab1: pass wc"
 ```
 
-如果要推到 GitHub，仓库必须设为 private；不要开 GitHub Actions 跑 lab 测试，不要把代码贴到博客/Issue/论坛。公开的是笔记、设计图和失败报告，不是代码。
+如果要推到 GitHub，仓库必须设为 private；不要开 GitHub Actions 跑 实验测试，不要把代码贴到博客/Issue/论坛。公开的是笔记、设计图和失败报告，不是代码。
 
-## 8. Debugging
+## 8. 调试
 
 - `go test -race`：必开；Raft/RSM 的竞态很容易漏。
 - `go test -run TestName -count=100`：重复跑，抓偶发 bug。
@@ -201,7 +201,7 @@ git commit -m "lab1: pass wc"
 - `dmesg` / `journalctl -k`：看 OOM、namespace、overlayfs 错误。
 - cgroup：`/sys/fs/cgroup/.../memory.events`、`cpu.stat`、`cgroup.events`。
 
-## 9. Common issues
+## 9. 常见问题
 
 | 错误 | 原因 | 解决 |
 |---|---|---|
@@ -218,7 +218,7 @@ git commit -m "lab1: pass wc"
 | `iptables` 规则不生效 | nftables/iptables 混用 | 安装 `iptables-nft`，或直接用 `nft` |
 | `bpftrace` 失败 | 缺内核头文件/BTF | 可选；跳过或用 `strace` |
 
-## 10. Workload
+## 10. 学习负担
 
 - 每周 8–10 小时；Raft 阶段可以到 12 小时。
 - 每个 lab 先读课程页和 lab 页，再画状态机/时序图，再写代码。

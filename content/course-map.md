@@ -1,10 +1,10 @@
-# INFRA 01 · Distributed Systems
+# INFRA 01 · 分布式系统
 
 > 21 lectures · 5 labs · Go
 >
 > 参考 MIT 6.5840 Spring 2026 的日程；本站是原创中文课程，不复制讲义原文，也不包含 lab 代码或答案。
 
-## Course description
+## 课程说明
 
 这门课讨论一个问题：**多个副本如何在对方面前表现得像一台机器？**
 
@@ -12,15 +12,15 @@
 
 五个 Go lab 把这些约束写成代码：MapReduce、单机 KV、Raft、基于 Raft 的 replicated state machine、分片 KV。Lab 3 是核心，通常需要 2–3 周；Lab 4/5 会复用它。
 
-## Prerequisites
+## 先修要求
 
 - 会 Go，或愿意在两周内补到能写并发程序。
 - 知道进程、线程、锁、文件系统、socket。
 - 不怕调试并发程序；愿意反复跑 `-race` 和 `-count=100`。
 
-## Schedule
+## 课程安排
 
-| # | Topic | Reading | Notes |
+| # | 主题 | 阅读 | 讲义 |
 |---|---|---|---|
 | 1 | Introduction — MapReduce, coordinator/worker | MapReduce (2004) | [Notes](lectures.html#lec1) |
 | 2 | RPC and Threads — at-most-once, retries, Go concurrency | Go concurrency docs | [Notes](lectures.html#lec2) |
@@ -47,9 +47,9 @@
 
 > 第 10 讲是 Lab 3 的 Q&A，不是新论文；第 22 讲是项目展示。
 
-## Labs
+## 实验
 
-| # | Lab | What you build | Notes |
+| # | 实验 | 内容 | 说明 |
 |---|---|---|---|
 | 1 | MapReduce | coordinator/worker, RPC, timeout/retry, atomic rename | [Lab 1](lab1.html) |
 | 2 | KV Server | linearizable Put/Get, version, at-most-once, lock | [Lab 2](lab2.html) |
@@ -59,7 +59,7 @@
 
 Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。时间有限时可以做到 Lab 3，但不要跳过 Raft 的边界测试。
 
-## Design questions
+## 设计问题
 
 这些问题没有标准答案；每学完一组课，选一个写 500 字。
 
@@ -70,13 +70,13 @@ Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。时间有限时可以做到
 5. 设计一个支持“长事务 + 外部副作用”的共识协议；哪些步骤必须由应用补偿，为什么？
 6. 如果机器的时钟会漂移，lease、TrueTime 和线性一致分别受什么影响？设计一个不依赖物理时钟的 fencing 方案。
 
-## Assessment
+## 考核
 
 - `make ...` 全绿，`-race` 也过。
 - 能不看代码讲清楚协议、失败模式、每个测试在测什么。
 - 每个 lab 写 300 字：问题、设计、失败模式、如果放进多容器平台或 agent runtime 会怎样。
 - 代码私有；不公开可直接复制的答案。
 
-## Readings
+## 阅读
 
-[Readings](papers.html) 有每篇论文的一句话定位和阅读重点。课程页与 lab 原文在 [MIT 6.5840](https://pdos.csail.mit.edu/6.5840/)；本站的 [Lecture Notes](lectures.html) 是原创中文导读。另加一篇 *Time, Clocks, and the Ordering of Events*（1978）作为顺序问题的补充。
+[阅读](papers.html) 有每篇论文的一句话定位和阅读重点。课程页与 lab 原文在 [MIT 6.5840](https://pdos.csail.mit.edu/6.5840/)；本站的 [讲义](lectures.html) 是原创中文导读。另加一篇 *Time, Clocks, and the Ordering of Events*（1978）作为顺序问题的补充。

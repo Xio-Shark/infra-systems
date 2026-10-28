@@ -4,7 +4,7 @@
 >
 > 核心实验在单机 Linux 或 WSL2 上完成：2 vCPU、4 GB 内存、20 GB 空闲磁盘；不需要 GPU、KVM 或多节点集群。
 
-## Course description
+## 课程说明
 
 Infra Systems 讨论同一个问题的三种场景：**多个程序如何共享资源、保持正确、失败后恢复**。
 
@@ -18,28 +18,28 @@ INFRA 03 把这些程序换成 agent：它通过工具改变系统状态，但�
 
 三门课共享三个问题：**谁在写？什么时候算完成？失败后看到什么？** 第一门课用副本回答，第二门课用容器和编排回答，第三门课用 capability 和事务回答。
 
-## Courses
+## 课程
 
-| Course | Title | Lectures | Labs | Prerequisites |
+| 课程 | 名称 | 讲数 | 实验 | 先修 |
 |---|---|---|---|---|
-| INFRA 01 | [Distributed Systems](course-map.html) | 21 | 5 | Go, OS basics |
-| INFRA 02 | [Cloud-Native Systems](cloud-native.html) | 14 | 5 | Linux/WSL2, C or Go |
-| INFRA 03 | [Agent OS](agent-os.html) | 12 | 5 + capstone | INFRA 01 or equivalent |
+| INFRA 01 | [分布式系统](course-map.html) | 21 | 5 | Go、操作系统基础 |
+| INFRA 02 | [云原生系统](cloud-native.html) | 14 | 5 | Linux/WSL2、C 或 Go |
+| INFRA 03 | [Agent OS](agent-os.html) | 12 | 5 + capstone | INFRA 01 或同等基础 |
 
-## Prerequisites
+## 先修要求
 
 - 会一门编译型语言。INFRA 01 用 Go；INFRA 02/03 用 Go 或 C。
 - 知道进程、线程、锁、文件系统、socket；知道 syscall 是什么。
 - 不需要先学完 OS 课；INFRA 03 需要你在 Linux 里动过 namespace、cgroup、mount。
 
-## Environment
+## 环境
 
 - 单机 Linux 或 WSL2（Ubuntu 24.04），2 vCPU、4 GB 内存、20 GB 空闲磁盘。
 - 不需要 GPU、KVM、多节点集群。kind/k3s、CRIU、Firecracker、eBPF 都是可选进阶；核心实验只依赖 namespace、cgroup v2、overlayfs、seccomp、pidfd、veth、iptables。
 - 内核实验在一次性环境里做；不要在生产机、共享服务器或带真实凭证的环境里做。
 - 安装与检查：[Environment](setup.html)。
 
-## Assessment
+## 考核
 
 自学版没有分数。完成一门课的标准：
 
@@ -48,17 +48,17 @@ INFRA 03 把这些程序换成 agent：它通过工具改变系统状态，但�
 - 能回答课程页的 design questions；
 - 代码私有，不公开可直接复制的答案。
 
-## Readings
+## 阅读
 
-阅读以论文、白皮书和规范为主：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [Readings](papers.html)。
+阅读以论文、白皮书和规范为主：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [阅读](papers.html)。
 
-## Policies
+## 课程规则
 
 独立完成、代码私有、不抄答案；内核实验只在一次性的 VM/WSL2 里做；不使用真实凭证。详见 [Policies](rules.html)。
 
-## Schedule at a glance
+## 时间安排
 
-| Week | Course | Content |
+| 周 | 课程 | 内容 |
 |---|---|---|
 | 1–6 | INFRA 01 | MapReduce → Raft → RSM → sharded KV |
 | 7–10 | INFRA 02 | image → container → Pod → network/storage → capstone |
