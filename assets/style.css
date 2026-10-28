@@ -403,6 +403,12 @@ input[type="checkbox"] {
 
   h2 {
     font-size: 1.14rem;
+    margin-top: 2.2rem;
+  }
+
+  main > blockquote {
+    font-size: 0.93em;
+    line-height: 1.75;
   }
 
   h3 {

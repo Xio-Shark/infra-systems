@@ -51,6 +51,6 @@ SUBMISSION=./cn1 CN1_ROOTFS=/path/to/rootfs ./judge/run.sh infra02 cn1
 
 ## 没有标准答案
 
-lab 页不给实现步骤；judge 只检查可观察行为，不限制你的设计。
+lab 页不给可直接复制的实现；judge 只检查可观察行为，不限制你的设计。
 
 Agent OS 的接口还没冻结，评分标准会随接口调整；以任务书和 `judge/contracts/` 为准。

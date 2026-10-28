@@ -2,13 +2,46 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 3/5**
 >
-> **先读**：[第 6 讲 Raft (1)](lectures.html#lec6) 和 [第 7 讲 Raft (2)](lectures.html#lec7) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-raft1.html) · [Raft 论文](https://raft.github.io/raft.pdf) · [中文翻译](https://github.com/maemual/raft-zh_cn)
+> **先读**：[第 6 讲 Raft (1)](lectures.html#lec6)、[第 7 讲 Raft (2)](lectures.html#lec7)、[第 8 讲 线性一致](lectures.html#lec8) 和 [第 10 讲 Lab 3 Q&A](lectures.html#lec10) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-raft1.html) · [Raft 论文](https://raft.github.io/raft.pdf) · [中文翻译](https://github.com/maemual/raft-zh_cn)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab3` · [评分标准](grading.html)
 >
 > [上一个：Lab 2](lab2.html) · [返回作业](labs.html) · [下一个：Lab 4](lab4.html)
 >
-> 必读 Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`。
+> **对照**：Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`（可选）。
+
+## 开始之前
+
+先读[第 6 讲](lectures.html#lec6)、[第 7 讲](lectures.html#lec7)、[第 8 讲](lectures.html#lec8)和[第 10 讲](lectures.html#lec10)。讲义给了状态、RPC、选举、提交、持久化、snapshot 的完整规则；论文 Figure 2 用来对照检查，不是前置。
+
+**规则速查**
+
+| 场景 | 必须做什么 |
+|---|---|
+| 收到 term 更大的 RPC | 更新 `currentTerm`，转 follower，清 `votedFor` |
+| 收到 term 更小的 RPC | 拒绝，回复自己的 term |
+| 投票 | 本 term 没投过别人，且候选人日志至少一样新 |
+| AppendEntries 前缀不匹配 | 拒绝，让 leader 回退 `nextIndex` |
+| 日志冲突 | 截断冲突后缀，再追加 leader 的条目 |
+| 推进 `commitIndex` | 多数派 `matchIndex ≥ N`，且 `log[N].term == currentTerm` |
+| 改变 term/votedFor/log | 先持久化，再回复 RPC |
+| 应用日志 | 单 goroutine 按 index 顺序送 `applyCh` |
+
+**本 lab 的不变量**
+
+1. 一个 term 最多一个 leader，每个 server 一个 term 最多投一票。
+2. 已提交的条目不会丢，也不会被覆盖。
+3. 任意两个日志在相同 index/term 处，之前的所有条目相同。
+4. `applyCh` 按 index 递增，不跳过、不重复；snapshot 之后从 snapshot 位置继续。
+5. 重启后 `currentTerm`、`votedFor`、`log` 与崩溃前一致。
+
+**第一次跑通**
+
+1. 只做 3A：选举和心跳，先不复制日志。跑 `make RUN="-run 3A" raft1`。
+2. 3A 稳定后做 3B：日志复制和 commit。先可靠网络，再故障测试。
+3. 3C：每次改变 term/votedFor/log 都持久化，跑重启测试。
+4. 3D：加 snapshot 和 InstallSnapshot，最后跑 `make raft1`。
+5. 每步都开 `-race` 自测；失败时只跑一个测试，保留日志。
 
 ## 目标
 
@@ -130,3 +163,11 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab3 --quick
 - follower 的日志比 leader 长时，`AppendEntries` 应该怎么处理？
 - snapshot 之后，`commitIndex` 和 `lastApplied` 分别是什么？
 - 哪些状态必须持久化？哪些可以重建？
+
+## 提交前检查
+
+- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
+- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
+- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
+- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
+- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。

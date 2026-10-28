@@ -19,7 +19,7 @@
 3. 跑 `LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`。
 4. 参考：[MapReduce 论文](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html)。
 
-作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
+作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。讲义已经覆盖 Lab 1 所需的概念；论文和官方页面是参考，不必先读。
 
 ## 先修要求
 

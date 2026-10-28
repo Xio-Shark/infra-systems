@@ -2,11 +2,42 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 2/5**
 >
-> **先读**：[第 2 讲 RPC and Threads](lectures.html#lec2) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvsrv1.html) · [Go 并发](https://go.dev/doc/effective_go#concurrency) · [阅读](papers.html)
+> **先读**：[第 2 讲 RPC and Threads](lectures.html#lec2) 和 [第 8 讲 线性一致](lectures.html#lec8) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvsrv1.html) · [Go 并发](https://go.dev/doc/effective_go#concurrency) · [阅读](papers.html)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2` · [评分标准](grading.html)
 >
 > [上一个：Lab 1](lab1.html) · [返回作业](labs.html) · [下一个：Lab 3](lab3.html)
+
+## 开始之前
+
+先读[第 2 讲](lectures.html#lec2)和[第 8 讲](lectures.html#lec8)。你需要知道 RPC 重试、at-most-once、线性一致和锁的基本语义；讲义已经覆盖这些，论文不是前置。
+
+**本 lab 的不变量**
+
+1. 每个 key 的 version 单调递增；`Put` 只在 expected version 匹配时生效。
+2. 同一个请求重发不会产生第二次修改；重发后的 `ErrVersion` 要能和“第一次就没执行”区分。
+3. `Get` 返回最后一次成功 `Put` 的值，不能读到旧值或在成功后回退。
+4. 同一把锁同一时刻最多一个持有者；`Release` 只释放自己的锁。
+
+**第一次跑通**
+
+1. 先跑可靠网络：
+
+   ```bash
+   cd ~/labs/6.5840/src
+   make RUN="-run Reliable" kvsrv1
+   ```
+
+2. 再跑不可靠网络，确认重发和去重：
+
+   ```bash
+   make RUN="-run Unreliable" kvsrv1
+   ```
+
+3. KV 稳定后再做锁：先 `make lock1`，再跑 `ManyClients...`。
+4. 不要一开始就做锁；KV 的版本语义不稳，锁的测试会把问题放大。
+
+**环境**：只改 `client.go`、`server.go`、`lock/lock.go`；`rpc/rpc.go` 是契约，不要改。
 
 ## 目标
 
@@ -80,6 +111,13 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2
 LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2 --quick
 ```
 
+## 调试
+
+- 每次 RPC 前把 Reply 清零；复用变量会把上一次的 `Err`/`Value` 带回来。
+- 在 server 的 Put/Get 入口打印 key、version、当前 value；在 client 重试处打印第几次、收到什么 `Err`。
+- 锁测试失败先看 `Acquire` 是否在确认成功后返回，再看 `Release` 是否检查了 owner。
+- `TestMemPutManyClientsReliable` 约 50 秒，不是挂死；留足 `-timeout`。
+
 ## 常见坑
 
 - Reply 没清零，复用了上一次的返回值。
@@ -97,3 +135,11 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2 --quick
 - 第一次收到 `ErrVersion` 和重发后收到 `ErrVersion`，语义有什么不同？
 - `Acquire` 收到 `ErrMaybe` 后，怎么判断自己是否拿到了锁？
 - 如果两个客户端同时 `Acquire`，哪个机制保证只有一个成功？
+
+## 提交前检查
+
+- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
+- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
+- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
+- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
+- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。

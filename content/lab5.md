@@ -2,11 +2,30 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 5/5**
 >
-> **先读**：[第 12 讲 Spanner](lectures.html#lec12) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-shard1.html) · [Spanner 论文](https://research.google/pubs/pub39966/)
+> **先读**：[第 11 讲 分布式事务](lectures.html#lec11)、[第 12 讲 Spanner](lectures.html#lec12) 和 [第 13 讲 Chain Replication](lectures.html#lec13) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-shard1.html) · [Spanner 论文](https://research.google/pubs/pub39966/)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5` · [评分标准](grading.html)
 >
 > [上一个：Lab 4](lab4.html) · [返回作业](labs.html)
+
+## 开始之前
+
+先读[第 11 讲](lectures.html#lec11)、[第 12 讲](lectures.html#lec12)和[第 13 讲](lectures.html#lec13)。你需要理解分片、配置版本、迁移期间的“先停服务、再搬数据、最后恢复服务”，以及 controller 只是一个可崩溃的客户端。
+
+**本 lab 的不变量**
+
+1. 同一时刻每个 shard 最多一个 group 在服务。
+2. 配置 `Num` 单调递增，不能分叉。
+3. 迁移一个 shard 时，KV 数据、去重表和 snapshot 一起搬。
+4. 客户端用旧配置访问时得到 `ErrWrongGroup`，重新 `Query` 后再试。
+5. controller 崩溃后，新 controller 能识别未完成的迁移，继续或回滚，不能重复应用。
+
+**第一次跑通**
+
+1. 先让一个 group 服务所有 shard，跑通 `TestInitQuery5A` 和 `TestStaticOneShardGroup5A`。
+2. 再做 join/leave 和 shard 迁移，只搬一个 shard，确认数据、去重表都到了。
+3. 再做 controller 崩溃恢复（5B），最后做并发 controller（5C）。
+4. `make shardkv` 很慢；先用 `-run 5A` 跑单个测试，保留日志。
 
 ## 目标
 
@@ -92,6 +111,13 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5
 LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5 --quick
 ```
 
+## 调试
+
+- 在 `ChangeConfigTo`、Freeze、Install、Delete 处打印 `Num`、shard、gid、状态。
+- 迁移卡住先看源组是否已经 freeze、目标组是否 install 完成、配置是否已经发布。
+- 用 `-race` 跑并发 controller；配置分叉通常来自两个 controller 同时写 `next`。
+- 客户端一直 `ErrWrongGroup`，检查 `Query` 是否拿到新配置，以及 shard 映射是否已经更新。
+
 ## 常见坑
 
 - `ChangeConfigTo` 在 install 完成前就发布新配置，客户端读到不完整状态。
@@ -113,3 +139,11 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5 --quick
 - 5B 里新 controller 怎么知道旧 controller 做到哪一步？
 - 5C 里两个 controller 同时 `ChangeConfigTo`，只有一个能写 `next`，另一个应该做什么？
 - 如果客户端在配置变更期间用旧配置访问，会发生什么？怎么恢复？
+
+## 提交前检查
+
+- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
+- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
+- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
+- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
+- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。

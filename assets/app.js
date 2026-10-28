@@ -100,8 +100,10 @@
   });
 
   var h1 = document.querySelector("main h1");
-  if (h1 && h1.parentNode) {
-    h1.parentNode.insertBefore(btn, h1.nextSibling);
+  var lead = document.querySelector("main > blockquote");
+  var anchor = lead || h1;
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(btn, anchor.nextSibling);
   }
 
   boxes.forEach(function (b) {

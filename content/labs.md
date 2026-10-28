@@ -6,6 +6,8 @@
 
 ## 从这里开始
 
+讲义是主教材：读完对应讲义，再看本页和 lab 页的任务书，就可以开始。论文、官方页面和规范是参考，不是前置。
+
 **第一次学，按这个顺序：**
 
 1. **选一门课**：
@@ -20,6 +22,13 @@
 3. **不要同时开两个 lab**。INFRA 01 的 Lab 3（Raft）是核心，通常需要 2–3 周；Lab 4/5 会复用它。
 
 如果只是想先跑通一个最小例子，从 [INFRA 01 Lab 1](lab1.html) 或 [INFRA 02 CN1](cloud-native.html#lab-cn1) 开始；两者都不需要 Kubernetes。
+
+## 卡住时
+
+- 回到讲义的“机制”和“失败模式”，写下你认为必须成立的不变量。
+- 只跑一个失败测试，保留日志；不要同时改三处。
+- 先把路径缩到最小：一个任务、一个请求、一个 shard、一个容器；跑通再加并发和故障。
+- 测试通过但讲不清为什么，算没做完；测试失败但能解释边界，比碰巧通过有用。
 
 ## 本地评分 {#judge}
 
@@ -53,7 +62,7 @@ SUBMISSION=./cn1 CN1_ROOTFS=/path/to/rootfs ./judge/run.sh infra02 cn1
 | 4 | Fault-tolerant KV | replicated state machine on Raft, snapshots | [Lab 4](lab4.html) |
 | 5 | Sharded KV | shards, config changes, fault-tolerant controller | [Lab 5](lab5.html) |
 
-Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。
+Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。接口签名以 `src/` 骨架为准，lab 页只写行为和约束。
 
 ```bash
 cd ~/labs/6.5840/src

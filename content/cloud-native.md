@@ -17,7 +17,7 @@
 1. 读 [第 1 讲 从进程到容器](#cn1) 和 [第 2 讲 容器运行时](#cn2)。
 2. 打开 [CN1 任务书](#lab-cn1)，先做一个隔离 shell。
 3. 准备 rootfs 和实现后，跑 `SUBMISSION=./cn1 CN1_ROOTFS=/path ./judge/run.sh infra02 cn1`。
-4. 参考：[OCI Runtime Spec](papers.html)、[cgroup v2 文档](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-container.html)。
+4. 延伸参考（可选）：[OCI Runtime Spec](papers.html)、[cgroup v2 文档](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-container.html)。讲义已经覆盖 CN1 所需的概念。
 
 作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
 
@@ -395,11 +395,13 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 
 ## 实验
 
-这门课有五个实验。每个实验都给目标、任务、验收和常见坑，不给完整代码。建议按顺序做；CN4 会复用到 INFRA 03。
+这门课有五个实验。讲义是主教材；每个实验都给目标、任务、验收和常见坑，不给完整代码。读完对应讲义再打开任务书就能开始，规范是参考。建议按顺序做；CN4 会复用到 INFRA 03。
 
 ### CN1：从零做一个容器 {#lab-cn1}
 
 **目标**：不用 Docker/containerd，用 Linux 原语跑起一个隔离的 shell。
+
+**开始之前**：先读[第 1 讲](#cn1)。准备一个最小 rootfs（`busybox-static` 即可）：`rootfs/bin/busybox`，再建 `/bin/sh` 等 symlink 和 `/proc`、`/sys`、`/dev`、`/tmp` 空目录。第一次先只做“新 PID/mount namespace + 重新挂 `/proc` + 进入 rootfs”，确认 `ps` 只看到容器内进程、`hostname` 与宿主不同；跑通后再加 cgroup 和清理。验收项就是标准，不需要先读论文。
 
 **任务**：
 
@@ -410,6 +412,8 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 5. 退出后清理 cgroup、netns、挂载点。
 6. 可选：把 rootfs 打包成 OCI layout，用 `skopeo inspect` 或 `umoci ls` 验证；对比两次构建的 digest。
 
+**提交接口**：可执行文件 `cn1`，调用方式是 `./cn1 run --rootfs DIR [--memory 64M] -- CMD [ARG...]`；退出码透传，stdout/stderr 原样输出。judge 只通过这个接口检查，不读源码；完整契约在仓库的 `judge/contracts/infra02.md`。
+
 **验收**：容器内 `ps` 只有 shell 和它启动的进程；`hostname` 与宿主不同；内存超过 64M 时进程被 kill；宿主上看不到残留 namespace。
 
 **常见坑**：PID namespace 需要重新挂 `/proc`，否则 `ps` 还是宿主视图；`pivot_root` 前要把 `/` 设为 private mount；cgroup v2 需要把进程写进 `cgroup.procs`，不是 `tasks`；network namespace 里默认只有 loopback，要手动 `ip link set lo up`。
@@ -417,6 +421,8 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 ### CN2：多容器 Pod 生命周期 {#lab-cn2}
 
 **目标**：实现一个迷你 Pod runner，理解 init/app/sidecar 的启动、共享和退出。
+
+**开始之前**：先读[第 4 讲](#cn4)和[第 5 讲](#cn5)。先做一个 pause 进程持有 netns，让两个子进程 `setns` 进去，用 `ip netns`/`nsenter` 确认它们看到同一张网卡；再加 init 顺序、共享卷、信号和 subreaper。第一次只验证“init 未完成时 app 不启动”，不要同时做日志和优雅退出。
 
 **任务**：
 
@@ -433,6 +439,8 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 ### CN3：CNI 与 Service {#lab-cn3}
 
 **目标**：手写一个最小 CNI 插件，理解 Pod 网络和 Service VIP。
+
+**开始之前**：先读[第 6 讲](#cn6)。先在两个 netns 之间建 veth、接 bridge、配 IP，`ping` 通；再加 NAT 和 Service VIP；最后做 NetworkPolicy 和 hairpin。用 `ip -n`、`bridge`、`conntrack -L` 观察每一步，不要一开始就写 CNI 插件。
 
 **任务**：
 
@@ -451,6 +459,8 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 
 **目标**：让多个容器共享一个工作区，并支持原子 commit/rollback。
 
+**开始之前**：先读[第 8 讲](#cn8)。先用 overlayfs 挂一个 lower/upper/merged，手动写文件、`commit`、`rollback`；确认读者在 commit 期间只看到旧版或新版；再做崩溃注入。先做单文件，再做多文件 manifest。
+
 **任务**：
 
 1. 用 overlayfs 做一个工作区：lowerdir 是只读基线，upperdir 是可写层，merged 是视图。
@@ -466,6 +476,8 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 ### CN5：Capstone——多容器 Agent 平台 {#lab-cn5}
 
 **目标**：把 CN1–CN4 组合成一个能跑、能坏、能解释的迷你平台。
+
+**开始之前**：先读[第 12 讲](#cn12)、[第 13 讲](#cn13)和[第 14 讲](#cn14)，并把 CN1–CN4 各跑通一次。先组合 CN1+CN2 做一个能启动/停止的 Pod，再加 CN3 的网络和 CN4 的工作区；最后加混沌测试。不要用 Kubernetes 包装层代替底层实现。
 
 **任务**：按第 14 讲的最低要求实现；至少做三种混沌测试（杀容器、OOM、网络分区）；写一份故障报告，说明每次注入后系统的观测、恢复路径和未解决的问题。
 

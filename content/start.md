@@ -8,6 +8,10 @@
 | 容器、Kubernetes 底层 | [INFRA 02](cloud-native.html) | [CN1](cloud-native.html#lab-cn1) | `./judge/run.sh infra02 cn1` |
 | agent 与内核（探索） | [INFRA 03](agent-os.html) | [AOS1](agent-os.html#lab-aos1) | 先按任务书自测 |
 
+## 怎么用
+
+讲义是主教材。每讲先讲问题和机制，读完讲义和 lab 页的任务书就能开始实验；论文、官方页面和规范是查细节的参考，不必先读。
+
 ## 每门课的第一步
 
 - **INFRA 01**：读[第 1 讲 MapReduce](lectures.html#lec1)，打开 [Lab 1](lab1.html)，实现后跑 `LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`。

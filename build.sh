@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 # GitHub Pages 对 HTML/CSS/JS/字体统一发 cache-control: max-age=600，且不支持自定义响应头。
 # 所以把内容哈希挂到资源 URL 上：CSS/JS/字体一改，URL 就变，浏览器和 Fastly 边缓存都拿不到旧副本。
-ver="$(cat template.html assets/style.css assets/app.js \
+ver="$(cat template.html assets/style.css assets/app.js content/*.md \
   assets/fonts/infra-mono-400.woff2 assets/fonts/infra-mono-600.woff2 \
   | openssl dgst -sha256 -r | cut -c1-10)"
 

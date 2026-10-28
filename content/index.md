@@ -70,7 +70,7 @@ INFRA 01 和 CN1 已有本地评分脚本，放在仓库的 `judge/` 目录：
 
 ## 阅读
 
-阅读以论文、白皮书和规范为主：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [阅读](papers.html)。
+讲义是主教材；论文、白皮书和规范是延伸参考：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [阅读](papers.html)。
 
 ## 时间安排
 

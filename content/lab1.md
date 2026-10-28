@@ -2,11 +2,44 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 1/5**
 >
-> **先读**：[第 1 讲 MapReduce](lectures.html#lec1) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html) · [MapReduce 论文](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf)
+> **先读**：[第 1 讲 MapReduce](lectures.html#lec1) 和 [第 2 讲 RPC](lectures.html#lec2) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html) · [MapReduce 论文](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1` · [评分标准](grading.html)
 >
 > [返回作业](labs.html) · [下一个：Lab 2](lab2.html)
+
+## 开始之前
+
+先读[第 1 讲](lectures.html#lec1)和[第 2 讲](lectures.html#lec2)。讲义里的 MapReduce 模型、任务状态和重试语义，就是这个 lab 的全部背景；论文只用来补细节。
+
+**本 lab 的不变量**
+
+1. 一个 map 任务的第 Y 个输出文件，要么不存在，要么是完整的 `mr-X-Y`；不会出现半个文件。
+2. 所有 map 任务成功完成后，才发 reduce；第 Y 个 reduce 只读第 Y 个分区。
+3. 任务可以重发；同一个任务的成功结果只保留一份，晚到的旧报告不改变状态。
+4. 所有 reduce 成功后 `Done()` 才为 true；coordinator 及时退出，测试不会挂住。
+
+**第一次跑通**
+
+1. 准备骨架和 Go 环境，见[环境](setup.html)。确认：
+
+   ```bash
+   cd ~/labs/6.5840/src
+   go version
+   ```
+
+2. 先跑一个最小测试，看当前失败点：
+
+   ```bash
+   make RUN="-run Wc" mr
+   ```
+
+   常见的失败是 `Done()` 永远不返回、RPC 没注册，或 worker 领不到任务。
+
+3. 按“顺序版 → 并行版 → 故障版”推进：先让一个 worker 顺序做完 map/reduce，跑通 `Wc`；再让多个 worker 并行；最后加超时重发，跑 `Crash`。
+4. 每加一个机制，先跑对应测试，再跑 `make mr` 全量。
+
+**环境**：只改 `coordinator.go`、`worker.go`、`rpc.go`；`main/`、`mrapps/`、`labrpc/` 和测试不要动。
 
 ## 目标
 
@@ -75,6 +108,13 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1
 LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1 --quick
 ```
 
+## 调试
+
+- 在 coordinator 的 assign/report 处打印任务号、阶段、状态、worker；在 worker 的 map/reduce 入口打印输入文件和输出路径。
+- 测试卡住时，先看 coordinator 是否在等一个永远不会完成的 map；再看 worker 是否在等一个永远不会来的任务。
+- 用 `ls mr-tmp-*` 看残留的 `mr-X-Y`；用 `ps` 看 worker 是否还在。
+- 超时相关测试可以临时把超时调短，确认重发路径，再调回 10 秒。
+
 ## 常见坑
 
 - worker 的当前目录是 `mr-tmp-*`，输入路径是相对的；输出不要加 `../`。
@@ -90,3 +130,11 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1 --quick
 - worker 写完文件但没报告就崩溃，会发生什么？coordinator 怎么恢复？
 - 如果 coordinator 在 reduce 阶段崩溃，测试允许吗？为什么？
 - 临时文件 + rename 解决了哪个竞态？
+
+## 提交前检查
+
+- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
+- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
+- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
+- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
+- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。

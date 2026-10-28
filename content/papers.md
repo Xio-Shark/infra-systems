@@ -3,6 +3,8 @@
 > 官方 schedule：[pdos.csail.mit.edu/6.5840/schedule.html](https://pdos.csail.mit.edu/6.5840/schedule.html)
 >
 > 论文版权归原作者/出版方所有。
+>
+> 这里的阅读是参考，不是前置。讲义已经覆盖做 lab 所需的概念；每篇的定位和阅读重点，用于做完实验后加深理解，卡住时再查。
 
 ## 怎么读
 
@@ -11,7 +13,7 @@
 3. 最后看 evaluation：它测了什么、没测什么、代价是什么。
 4. 用中文写 5 句话：问题、假设、机制、代价、和上一篇的关系。
 
-## INFRA 01 · 核心阅读
+## INFRA 01 · 论文
 
 ### [MapReduce (2004)](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) {#mapreduce}
 
@@ -213,7 +215,7 @@
 
 **和 lab 的关系**：Lab 4/5 的配置变更、shard 迁移涉及原子提交。
 
-## INFRA 02 · 云原生阅读
+## INFRA 02 · 论文与规范
 
 下面这些不是 6.5840 schedule 上的必读论文，是INFRA 02/03的补充阅读。不要一次读完；每篇写 5 句话：问题、假设、机制、代价、和课程的关系。
 
@@ -261,7 +263,7 @@
 
 **和课程的关系**：INFRA 02 第 10 讲的 sandbox runtime；INFRA 03 第 2 讲的“边界放在哪一层”。
 
-## INFRA 03 · Agent OS 阅读
+## INFRA 03 · 论文
 
 > Agent OS 是探索方向，这些论文和系统不代表主流共识。读的时候重点看它们各自解决了什么、没解决什么，不要把这些设计当成标准答案。
 
@@ -340,7 +342,7 @@
 | [in-toto](https://in-toto.io/) | 供应链各步骤的签名与验证 | INFRA 02 |
 | [SPDX](https://spdx.dev/) | SBOM（软件物料清单）格式 | INFRA 02 |
 
-## 阅读顺序
+## 建议顺序（可选）
 
 1. **[MapReduce](#mapreduce)** → 做 Lab 1。
 2. **[Time, Clocks, and the Ordering of Events](#time-clocks)** → 理解逻辑顺序，再进入 Raft。

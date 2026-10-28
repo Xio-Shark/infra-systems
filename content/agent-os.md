@@ -27,7 +27,7 @@ Agent OS 不解决“让 agent 更聪明”的问题。它解决的是：**让 a
 1. 读 [第 1 讲 从 shell 到 syscall](#aos1) 和 [第 2 讲 边界](#aos2)。
 2. 打开 [AOS1 任务书](#lab-aos1)，先定义接口表。
 3. 评分接口还没冻结；先按任务书的“验收”自测，judge 会在接口冻结后补。
-4. 参考：[seL4](papers.html)、[AIOS](papers.html)、[OCI Runtime Spec](papers.html)。
+4. 延伸参考（可选）：[seL4](papers.html)、[AIOS](papers.html)、[OCI Runtime Spec](papers.html)。讲义已经覆盖 AOS1 所需的概念。
 
 作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
 
@@ -414,11 +414,13 @@ Capstone 的目标不是做一个“全能 agent 平台”，而是做一个**�
 
 ## 实验
 
-这门课有五个实验，加一个 capstone。每个实验都给目标、任务、验收和常见坑，不给完整代码。建议在一次性的 Linux/WSL2 环境里做，做完就快照/重装。
+这门课有五个实验，加一个 capstone。讲义是主教材；每个实验都给目标、任务、验收和常见坑，不给完整代码。读完对应讲义再打开任务书就能开始，规范是参考。建议在一次性的 Linux/WSL2 环境里做，做完就快照/重装。
 
 ### AOS1：类型化 ABI 与沙箱执行 {#lab-aos1}
 
 **目标**：定义一个最小 syscall 表，实现 `spawn` 和 `exec`，并让工具在隔离环境里运行。
+
+**开始之前**：先读[第 1 讲](#aos1)、[第 2 讲](#aos2)和[第 3 讲](#aos3)。先写一个 Unix socket daemon 和一个类型化 `spawn`/`exec` 请求，返回 `status`/`exit`/`stdout`/`effects`/`evidence`；跑通后再加 namespace、cgroup、seccomp。接口表先定下来，再写实现；否则每加一个隔离机制都要改 ABI。
 
 **任务**：
 
@@ -436,6 +438,8 @@ Capstone 的目标不是做一个“全能 agent 平台”，而是做一个**�
 
 **目标**：实现 `workspace.commit` / `rollback`，保证读者永远看到完整版本。
 
+**开始之前**：先读[第 4 讲](#aos4)和[第 6 讲](#aos6)。先做单文件 `commit`/`rollback`（临时文件 + rename + fsync），确认读者只看到完整文件；再做多文件 manifest 和崩溃恢复。不要先上 overlayfs；理解 rename/fsync 的边界后，overlayfs 只是另一种实现。
+
 **任务**：
 
 1. 用 overlayfs 或 staging 目录管理工作区；基线只读，变更写 upper/staging。
@@ -451,6 +455,8 @@ Capstone 的目标不是做一个“全能 agent 平台”，而是做一个**�
 ### AOS3：能力沙箱与权限收敛 {#lab-aos3}
 
 **目标**：把“路径权限”换成“能力句柄”，并证明逃逸尝试会失败。
+
+**开始之前**：先读[第 3 讲](#aos3)和[第 11 讲](#aos11)。先把工作区做成一个 fd 句柄，通过 `SCM_RIGHTS` 传给工具，daemon 只接受句柄；再写 `..`、symlink、`/proc/self/fd`、bind mount 的逃逸测试；最后加撤销和审计。
 
 **任务**：
 
@@ -468,6 +474,8 @@ Capstone 的目标不是做一个“全能 agent 平台”，而是做一个**�
 
 **目标**：实现工作区级 snapshot/restore，并讨论进程快照的边界。
 
+**开始之前**：先读[第 7 讲](#aos7)。先做单工作区的 snapshot/restore，确认文件 hash 一致；再做三个分支和一致快照（freeze + fsync）。进程快照（CRIU）是选做，先把工作区快照做对。
+
 **任务**：
 
 1. 用 overlayfs 或 reflink 做工作区快照；记录 snapshot id、父 snapshot、manifest hash。
@@ -484,6 +492,8 @@ Capstone 的目标不是做一个“全能 agent 平台”，而是做一个**�
 
 **目标**：让两个 agent 安全地共享一个工作区，并能证明谁做了什么。
 
+**开始之前**：先读[第 9 讲](#aos9)和[第 10 讲](#aos10)。先做 lease + 单调 epoch，再用 `SIGSTOP` 模拟旧 owner 暂停、新 owner 接管，确认旧 owner 的写被拒绝；最后加审计 hash chain 和 replay。审计日志先保证 append-only 和 fsync，再谈查询。
+
 **任务**：
 
 1. 实现 `lease.acquire/renew/release`，TTL 可配置；返回单调递增的 `epoch`。
@@ -497,6 +507,8 @@ Capstone 的目标不是做一个“全能 agent 平台”，而是做一个**�
 **常见坑**：lease 续约和写不是原子的；时钟漂移；`SIGSTOP` 期间 TCP 连接可能断；审计日志的 `fsync` 会影响性能；hash chain 不防删除末尾事件。
 
 ### Capstone：最小 Agent OS {#lab-aos-capstone}
+
+**开始之前**：先读[第 12 讲](#aos12)，并完成 AOS1–AOS5 中至少三个。先选一个端到端小任务，把操作表缩到 8–10 个；先跑通“启动 → 改文件 → commit → 审计”这一条路径，再加故障注入。
 
 把 AOS1–AOS5 组合起来，按第 12 讲的清单实现，附一份故障报告和 10 分钟 demo。可以选一个真实的小任务（例如“改一个 Markdown 文件、跑一次链接检查、提交一个 artifact”）作为端到端场景；不要接真实凭证，不要接生产 API。
 
