@@ -47,6 +47,10 @@ The site uses relative links, so it works under `https://<user>.github.io/<repo>
 
 The template currently sets `noindex, nofollow`. If you want the course to be searchable, remove that meta tag from `template.html`.
 
+## Caching
+
+GitHub Pages serves every file with `cache-control: max-age=600` and does not support custom response headers. `build.sh` therefore appends a content hash to the stylesheet, script, and font URLs (`assets/style.css?v=<hash>`, `dist/version.json`), so a rebuild invalidates exactly the files that changed. `assets/app.js` compares its baked-in hash with `version.json` on load and reloads once with the new `?v=` after a deploy. The HTML document itself can still be up to 10 minutes stale; a hard reload or a fresh `?v=` in the page URL bypasses that.
+
 ## Structure
 
 ```text

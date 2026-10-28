@@ -1,6 +1,33 @@
 (function () {
   "use strict";
 
+  // 构建时替换成资源哈希。GH Pages 连 HTML 都是 max-age=600，刷新页面可能仍拿旧文档；
+  // 这里比对部署版本，变了就带新 ?v= 跳转一次（同一版本只跳一次，避免循环）。
+  var ASSET_VER = "__ASSET_VER__";
+
+  (function checkVersion() {
+    if (ASSET_VER.charAt(0) === "_" || !window.fetch) return;
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (data) {
+        if (!data || !data.v || data.v === ASSET_VER) return;
+        try {
+          if (sessionStorage.getItem("infra-course:ver") === data.v) return;
+          sessionStorage.setItem("infra-course:ver", data.v);
+        } catch (e) {
+          return;
+        }
+        var url = new URL(location.href);
+        url.searchParams.set("v", data.v);
+        location.replace(url.toString());
+      })
+      .catch(function () {
+        // 离线或 version.json 缺失时跳过，页面其余部分照常工作
+      });
+  })();
+
   // 高亮当前导航
   var page = location.pathname.split("/").pop() || "index.html";
   if (/^lab\d+\.html$/.test(page)) {
