@@ -1,0 +1,42 @@
+{
+  "title": "INFRA 03 · Agent OS（人工验收）",
+  "manual": true,
+  "labs": {
+    "aos1": {
+      "title": "Typed ABI and sandboxed exec",
+      "script": "aos1.sh",
+      "weight": 20,
+      "timeout": 60
+    },
+    "aos2": {
+      "title": "Workspace transaction",
+      "script": "aos2.sh",
+      "weight": 20,
+      "timeout": 60
+    },
+    "aos3": {
+      "title": "Capability sandbox",
+      "script": "aos3.sh",
+      "weight": 20,
+      "timeout": 60
+    },
+    "aos4": {
+      "title": "Snapshot and restore",
+      "script": "aos4.sh",
+      "weight": 20,
+      "timeout": 60
+    },
+    "aos5": {
+      "title": "Lease, fencing, audit",
+      "script": "aos5.sh",
+      "weight": 20,
+      "timeout": 60
+    },
+    "capstone": {
+      "title": "Minimal Agent OS",
+      "script": "capstone.sh",
+      "weight": 20,
+      "timeout": 60
+    }
+  }
+}
