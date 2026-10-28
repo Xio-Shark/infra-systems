@@ -13,8 +13,10 @@ import argparse
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -59,7 +61,14 @@ def iter_courses():
         yield data
 
 
-def run_lab(course_name: str, lab_id: str, lab: dict, quick: bool, verbose: bool) -> dict:
+def run_lab(
+    course_name: str,
+    lab_id: str,
+    lab: dict,
+    quick: bool,
+    verbose: bool,
+    show_progress: bool = True,
+) -> dict:
     script = TESTS / course_name / lab["script"]
     started = time.time()
     result = {
@@ -72,34 +81,66 @@ def run_lab(course_name: str, lab_id: str, lab: dict, quick: bool, verbose: bool
         "checks": [],
         "duration": 0.0,
         "detail": "",
+        "quick": quick,
     }
     if not script.is_file():
         result["detail"] = f"missing test script: {script.relative_to(JUDGE)}"
         return result
 
     env = os.environ.copy()
-    env["QUICK"] = "1" if quick else env.get("QUICK", "0")
+    # Only --quick enables quick mode; an ambient QUICK=1 must not silently
+    # turn a full run into a smoke test.
+    env["QUICK"] = "1" if quick else "0"
     env["JUDGE_COURSE"] = course_name
     env["JUDGE_LAB"] = lab_id
     timeout = int(lab.get("timeout", 900))
+    if quick:
+        # A smoke test should fail fast instead of waiting for the full lab.
+        timeout = min(timeout, 300)
 
+    proc = subprocess.Popen(
+        ["bash", str(script)],
+        cwd=str(REPO),
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    stop_heartbeat = threading.Event()
+
+    def heartbeat() -> None:
+        while not stop_heartbeat.wait(15):
+            if show_progress:
+                elapsed = int(time.time() - started)
+                print(
+                    f"    ... {lab_id} still running ({elapsed}s)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+    hb = threading.Thread(target=heartbeat, daemon=True)
+    hb.start()
+
+    timed_out = False
     try:
-        proc = subprocess.run(
-            ["bash", str(script)],
-            cwd=str(REPO),
-            env=env,
-            text=True,
-            capture_output=True,
-            timeout=timeout,
-        )
+        stdout, stderr = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
-        result["duration"] = time.time() - started
-        result["detail"] = f"timeout after {timeout}s"
-        return result
+        timed_out = True
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        stdout, stderr = proc.communicate()
+    finally:
+        stop_heartbeat.set()
+        hb.join(timeout=1)
 
     result["duration"] = time.time() - started
+    stdout = stdout or ""
+    stderr = stderr or ""
     earned = total = None
-    for line in proc.stdout.splitlines():
+    for line in stdout.splitlines():
         m = CHECK_RE.match(line.strip())
         if m:
             result["checks"].append(
@@ -110,30 +151,52 @@ def run_lab(course_name: str, lab_id: str, lab: dict, quick: bool, verbose: bool
         if m:
             earned, total = int(m.group(1)), int(m.group(2))
 
-    if total:
-        result["score"] = round(result["weight"] * earned / total)
-    elif result["checks"]:
-        passed = sum(1 for c in result["checks"] if c["status"] == "PASS")
-        result["score"] = round(result["weight"] * passed / len(result["checks"]))
-
-    if not result["checks"] and total is None:
-        result["detail"] = "test script produced no CHECK/SCORE lines"
-    elif all(c["status"] == "SKIP" for c in result["checks"]):
-        result["status"] = "SKIP"
-    elif result["score"] >= result["weight"]:
-        result["status"] = "PASS"
-    elif result["score"] > 0:
-        result["status"] = "PARTIAL"
+    if timed_out:
+        # The script never reached finish(), so its CHECK set is incomplete.
+        # Keep the checks for diagnosis but do not award a passing score.
+        result["status"] = "ERROR"
+        result["score"] = 0
+        seen = (
+            f"; {len(result['checks'])} check(s) seen before timeout"
+            if result["checks"]
+            else ""
+        )
+        result["detail"] = f"timeout after {timeout}s{seen}"
     else:
-        result["status"] = "FAIL"
+        if total:
+            result["score"] = min(
+                result["weight"], max(0, round(result["weight"] * earned / total))
+            )
+        elif result["checks"]:
+            passed = sum(1 for c in result["checks"] if c["status"] == "PASS")
+            result["score"] = round(result["weight"] * passed / len(result["checks"]))
 
-    if proc.returncode != 0 and result["status"] == "PASS":
-        result["status"] = "PARTIAL"
-        result["detail"] = f"test script exited {proc.returncode}"
+        if not result["checks"] and total is None:
+            result["detail"] = "test script produced no CHECK/SCORE lines"
+        elif result["checks"] and all(
+            c["status"] == "SKIP" for c in result["checks"]
+        ):
+            result["status"] = "SKIP"
+        elif result["score"] >= result["weight"]:
+            result["status"] = "PASS"
+        elif result["score"] > 0:
+            result["status"] = "PARTIAL"
+        else:
+            result["status"] = "FAIL"
+
+        if proc.returncode != 0 and result["status"] == "PASS":
+            result["status"] = "PARTIAL"
+            result["detail"] = f"test script exited {proc.returncode}"
+
+        # --quick is a smoke test. It can show progress, but it is not a pass.
+        if quick and result["status"] == "PASS":
+            result["status"] = "PARTIAL"
+            result["detail"] = "quick mode is a smoke test, not a full pass"
+
     if verbose or result["status"] in {"FAIL", "PARTIAL", "ERROR"}:
         result["output"] = "\n".join(
             line
-            for line in (proc.stdout + proc.stderr).splitlines()
+            for line in (stdout + stderr).splitlines()
             if not line.startswith(("CHECK ", "SCORE "))
         ).strip()
     return result
@@ -142,9 +205,10 @@ def run_lab(course_name: str, lab_id: str, lab: dict, quick: bool, verbose: bool
 def print_result(result: dict, use_color: bool) -> None:
     status = result["status"]
     label = paint(f"{status:<8}", status, use_color)
+    quick = "  [quick]" if result.get("quick") else ""
     print(
         f"  {result['lab']:<7} {result['title']:<28} {label} "
-        f"{result['score']:>3}/{result['weight']:<3} {result['duration']:>6.1f}s"
+        f"{result['score']:>3}/{result['weight']:<3} {result['duration']:>6.1f}s{quick}"
     )
     for check in result["checks"]:
         cstatus = check["status"]
@@ -166,7 +230,8 @@ def list_courses(as_json: bool) -> None:
         print(json.dumps(courses, ensure_ascii=False, indent=2))
         return
     for course in courses:
-        print(course.get("title", course["_name"]))
+        manual = "  [manual]" if course.get("manual") else ""
+        print(course.get("title", course["_name"]) + manual)
         for lab_id, lab in course.get("labs", {}).items():
             script = TESTS / course["_name"] / lab.get("script", "")
             state = "" if script.is_file() else "  [no test script]"
@@ -193,8 +258,16 @@ def main() -> int:
     parser.add_argument("lab", nargs="?")
     parser.add_argument("--list", action="store_true", help="list courses and labs")
     parser.add_argument("--all", action="store_true", help="run every lab in scope")
-    parser.add_argument("--quick", action="store_true", help="run a small test subset")
-    parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="run a small test subset (smoke test; never reported as a full pass)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="machine-readable output; the exit code still reflects pass/fail",
+    )
     parser.add_argument("--verbose", action="store_true", help="show test output")
     args = parser.parse_args()
 
@@ -206,7 +279,11 @@ def main() -> int:
     selected: list[tuple[str, str, dict]] = []
 
     if args.all:
-        courses = [load_course(args.course)] if args.course else list(iter_courses())
+        courses = (
+            [load_course(args.course)]
+            if args.course
+            else [c for c in iter_courses() if not c.get("manual")]
+        )
         for course in courses:
             for lab_id, lab in course.get("labs", {}).items():
                 selected.append((course["_name"], lab_id, lab))
@@ -227,7 +304,14 @@ def main() -> int:
             course = load_course(course_name)
             print(course.get("title", course_name))
             current_course = course_name
-        result = run_lab(course_name, lab_id, lab, args.quick, args.verbose)
+        result = run_lab(
+            course_name,
+            lab_id,
+            lab,
+            args.quick,
+            args.verbose,
+            show_progress=not args.json,
+        )
         results.append(result)
         if not args.json:
             print_result(result, use_color)
@@ -238,11 +322,11 @@ def main() -> int:
         total = sum(r["weight"] for r in results)
         score = sum(r["score"] for r in results)
         print(f"\n总分：{score}/{total}")
-        if any(r["status"] != "PASS" for r in results):
+        if all(r["status"] == "PASS" for r in results):
+            print("自动检查全部通过。别忘了写复盘。")
+        else:
             print("未全部通过；看上面的 CHECK 行，或加 --verbose 看测试输出。")
-            return 1
-        print("全部通过。")
-    return 0
+    return 0 if all(r["status"] == "PASS" for r in results) else 1
 
 
 if __name__ == "__main__":

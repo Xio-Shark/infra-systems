@@ -15,7 +15,7 @@
 **本 lab 的不变量**
 
 1. 每个 key 的 version 单调递增；`Put` 只在 expected version 匹配时生效。
-2. 同一个请求重发不会产生第二次修改；重发后的 `ErrVersion` 要能和“第一次就没执行”区分。
+2. 同一个请求重发不会产生第二次修改；但客户端不能从重发后的 `ErrVersion` 判断第一次是否执行——这种情况要返回 `ErrMaybe`。
 3. `Get` 返回最后一次成功 `Put` 的值，不能读到旧值或在成功后回退。
 4. 同一把锁同一时刻最多一个持有者；`Release` 只释放自己的锁。
 
@@ -74,7 +74,7 @@
 Clerk 的要求：
 
 - 网络失败时重发同一个请求，不产生第二次 `Put`。
-- 重发后收到 `ErrVersion`，要能区分“第一次执行了”和“第一次没执行”。
+- 首次收到 `ErrVersion` 返回 `ErrVersion`；重发后收到 `ErrVersion` 返回 `ErrMaybe`，因为第一次可能已经执行。
 - `Get` / `Put` 的返回值必须符合线性一致：不能读到旧值，也不能在成功后回退。
 
 锁的要求：
@@ -122,7 +122,7 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2 --quick
 
 - Reply 没清零，复用了上一次的返回值。
 - 比较 version 和更新 value 不在同一个锁里。
-- 第一次 `ErrVersion` 和重发后的 `ErrVersion` 用了同一个错误。
+- 把重发后的 `ErrVersion` 当成“确定没执行”返回 `ErrVersion`；应该返回 `ErrMaybe`。
 - `Acquire` 没有确认自己真的拿到锁就返回。
 - `Release` 没有检查 value 是不是自己的 ID。
 - 忙等把 CPU 打满；用 `time.Sleep`。
@@ -132,14 +132,14 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2 --quick
 ## 自测问题
 
 - 为什么版本号能实现 at-most-once？它省掉了哪种去重表？
-- 第一次收到 `ErrVersion` 和重发后收到 `ErrVersion`，语义有什么不同？
+- 为什么首次 `ErrVersion` 可以返回 `ErrVersion`，重发后的 `ErrVersion` 必须返回 `ErrMaybe`？
 - `Acquire` 收到 `ErrMaybe` 后，怎么判断自己是否拿到了锁？
 - 如果两个客户端同时 `Acquire`，哪个机制保证只有一个成功？
 
 ## 提交前检查
 
-- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
-- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
-- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
-- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
-- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。
+- [ ] `make kvsrv1` 和 `make lock1` 全绿；`Reliable`/`Unreliable` 关键测试各跑 3 次。
+- [ ] 用默认 `-race` 跑过；没有 data race 或 goroutine 泄漏。
+- [ ] 首次 `ErrVersion` 返回 `ErrVersion`，重发后的 `ErrVersion` 返回 `ErrMaybe`。
+- [ ] Reply 每次清零；锁的 `Release` 检查 owner；没有忙等。
+- [ ] 能讲清 at-most-once、线性一致、锁的所有权；写了 300 字复盘（模板见[评分标准](grading.html#reflection)）。

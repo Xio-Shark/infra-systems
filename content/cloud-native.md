@@ -16,7 +16,7 @@
 
 1. 读 [第 1 讲 从进程到容器](#cn1) 和 [第 2 讲 容器运行时](#cn2)。
 2. 打开 [CN1 任务书](#lab-cn1)，先做一个隔离 shell。
-3. 准备 rootfs 和实现后，跑 `SUBMISSION=./cn1 CN1_ROOTFS=/path ./judge/run.sh infra02 cn1`。
+3. 准备 rootfs 和实现后，跑 `SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1`。
 4. 延伸参考（可选）：[OCI Runtime Spec](papers.html)、[cgroup v2 文档](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-container.html)。讲义已经覆盖 CN1 所需的概念。
 
 作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
@@ -180,7 +180,7 @@ init container 按顺序执行，每个都必须成功退出，才会启动下�
 
 Pod 卡在 Terminating 是最常见的多容器故障之一。表面上看是“删除很慢”，实际原因通常有三类：容器里的 PID 1 不转发信号；sidecar 还在等一个永远不会来的连接；`preStop` 或 `terminationGracePeriodSeconds` 配得太长。
 
-容器里的 1 号进程有特殊语义：它没有默认的信号处理器，内核不会替它忽略 `SIGTERM`，但如果它是 shell，shell 不一定会把信号转发给子进程。`CMD ["/app"]`（exec form）让 `/app` 成为 PID 1；`CMD /app`（shell form）会变成 `/bin/sh -c /app`，PID 1 是 shell，`SIGTERM` 可能根本到不了 `/app`。这就是为什么很多镜像要用 `tini`、`dumb-init` 或自己实现 signal forwarding。
+容器里的 1 号进程有特殊语义：发给 PID namespace init 的信号，如果它没有安装 handler，内核会忽略（`SIGKILL`/`SIGSTOP` 除外）；从宿主发 `SIGTERM` 就是这种情况。如果它是 shell，shell 也不一定会把信号转发给子进程。`CMD ["/app"]`（exec form）让 `/app` 成为 PID 1；`CMD /app`（shell form）会变成 `/bin/sh -c /app`，PID 1 是 shell，`SIGTERM` 可能根本到不了 `/app`。这就是为什么很多镜像要用 `tini`、`dumb-init` 或自己实现 signal forwarding。
 
 Kubernetes 删除 Pod 的流程大致是：API server 标记 deletionTimestamp；endpoint controller 把 Pod 从 Service endpoints 里摘掉；kubelet 执行 `preStop`；然后给每个容器发 `SIGTERM`；等 `terminationGracePeriodSeconds`（默认 30 秒）；还没退出就 `SIGKILL`。native sidecar 会在普通容器之后终止，给日志 flush 留时间；经典 sidecar 没有这个保证，所以要么自己协调，要么用 native sidecar。
 
@@ -192,7 +192,7 @@ Kubernetes 删除 Pod 的流程大致是：API server 标记 deletionTimestamp�
 
 **自测**
 
-- 为什么 `docker stop` 有时要等 10 秒？`SIGTERM` 到底发给了谁？
+- 为什么 `docker stop` 有时要等 10 秒？PID 1 没装 handler 和 shell 不转发各自起什么作用？
 - native sidecar 的终止顺序是什么？为什么这个顺序对日志很重要？
 
 **作业**：[CN2](#lab-cn2) · [作业总览](labs.html)
@@ -395,7 +395,7 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 
 ## 实验
 
-这门课有五个实验。讲义是主教材；每个实验都给目标、任务、验收和常见坑，不给完整代码。读完对应讲义再打开任务书就能开始，规范是参考。建议按顺序做；CN4 会复用到 INFRA 03。
+这门课有五个实验。讲义是导读；每个实验都给目标、任务、验收和常见坑，不给完整代码。读完对应讲义再打开任务书就能开始，规范是参考。建议按顺序做；CN4 会复用到 INFRA 03。
 
 ### CN1：从零做一个容器 {#lab-cn1}
 

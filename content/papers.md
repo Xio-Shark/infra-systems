@@ -88,7 +88,7 @@
 **一句话**：一个协调服务，提供 znode、watch、session，用 ZAB 协议做复制。
 
 **阅读重点**：
-- 为什么用“顺序一致性 + 客户端 FIFO”而不是线性一致。
+- 为什么写是线性一致的、读却可能陈旧；FIFO client order 解决什么。
 - watch 的语义和一次性触发。
 - leader election / distributed lock 怎么用 znode 实现。
 
@@ -160,7 +160,7 @@
 
 **和 lab 的关系**：如果你做 agent runtime 或进程内核，这一篇和隔离/恢复问题很接近。
 
-### [Ray (2021)](https://arxiv.org/abs/1712.05889) {#ray}
+### [Ray (2018)](https://arxiv.org/abs/1712.05889) {#ray}
 
 **一句话**：分布式 Python 的 task/actor 模型，强调调度和 lineage。
 
@@ -204,7 +204,7 @@
 
 **和 lab 的关系**：如果你关心“节点可能作恶”，这是入口；课程的 Raft 只处理 crash。
 
-### [6.033 Chapter 9（分布式事务）](https://ocw.mit.edu/courses/6-033-computer-system-engineering-spring-2018/) {#6033}
+### [6.033 Chapter 9（分布式事务）](https://ocw.mit.edu/courses/6-033-computer-system-engineering-spring-2018/resources/mit6_033s18lec9/) {#6033}
 
 **一句话**：2PC、原子提交、分布式事务的基础章节。
 

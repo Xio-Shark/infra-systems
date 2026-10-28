@@ -12,7 +12,7 @@
 
 ## 开始之前
 
-先读[第 6 讲](lectures.html#lec6)、[第 7 讲](lectures.html#lec7)、[第 8 讲](lectures.html#lec8)和[第 10 讲](lectures.html#lec10)。讲义给了状态、RPC、选举、提交、持久化、snapshot 的完整规则；论文 Figure 2 用来对照检查，不是前置。
+先读[第 6 讲](lectures.html#lec6)、[第 7 讲](lectures.html#lec7)、[第 8 讲](lectures.html#lec8)和[第 10 讲](lectures.html#lec10)。讲义和下面的规则速查给了状态、RPC、选举、提交、持久化、snapshot 的关键规则；论文 Figure 2 用来对照检查。第一次实现可以只看这两处，卡住时再读论文第 5 节。
 
 **规则速查**
 
@@ -120,7 +120,7 @@ make RUN="-run 3C" raft1
 make RUN="-run 3D" raft1
 ```
 
-- 评分不强制 `-race`，但你应该用 `-race` 自测；竞态是 Raft 最常见的 bug。
+- MIT 的 Makefile 默认用 `-race` 跑测试，judge 调 `make` 时也会带上；自己调试可以临时用 `RACE=` 关掉，但提交前要用默认值跑一遍。竞态是 Raft 最常见的 bug。
 - 全部测试有总时间限制；3C/3D 在 `-race` 下可能要好几分钟。
 - 测试失败会生成可视化 HTML（porcupine timeline），看事件顺序。
 
@@ -166,8 +166,8 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab3 --quick
 
 ## 提交前检查
 
-- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
-- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
-- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
-- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
-- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。
+- [ ] 3A–3D 全绿；`make raft1` 连续跑 3 次没有偶发失败。
+- [ ] 用默认 `-race` 跑过；持久化顺序正确（先落盘再回复）。
+- [ ] `applyCh` 按 index 递增，不重复、不跳过；snapshot 后不倒退。
+- [ ] 能不看代码讲清 Figure 8、选举限制、commit 规则、snapshot。
+- [ ] 没有残留的 goroutine/临时文件；写了 300 字复盘（模板见[评分标准](grading.html#reflection)）。

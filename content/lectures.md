@@ -1,7 +1,7 @@
 # INFRA 01 · 讲义
 
-> 21 讲讲义，按 MIT 6.5840 Spring 2026 的日程整理。每一讲给出问题、机制、失败模式、和 lab 的关系。读完一讲和对应的 lab 任务书，就可以开始实验。
-> 这是原创中文讲义，不是原文翻译。论文和官方页面是延伸阅读，不是做实验的前置条件。
+> 21 讲讲义 + 项目展示，按 MIT 6.5840 Spring 2026 的日程整理。每一讲给出问题、机制、失败模式、和 lab 的关系。读完一讲和对应的 lab 任务书，就可以开始实验。
+> 这是原创中文导读，不是原文翻译。讲义给出问题、机制、失败模式和 lab 的接口；它不替代论文的完整论证。做 lab 时以讲义、`src/` 骨架和官方 lab 页为准；想真正理解协议，做完 lab 后至少读对应论文章节。
 >
 > 课程页、labs 和 design questions 在 [INFRA 01](course-map.html)。
 
@@ -58,7 +58,7 @@ MapReduce 把一次大规模计算拆成两个纯函数：`map` 把一条输入�
 
 RPC 把函数调用变成请求和回复。网络会丢请求、丢回复、重复、延迟；客户端能做的只有重试。服务端于是要回答：同一个请求到达两次，执行一次还是两次？at-least-once 实现简单，但会重复副作用；at-most-once 需要服务端记住执行过的请求，或让客户端带版本号；exactly-once 在崩溃恢复下还要把去重状态持久化，不是免费的。
 
-Lab 2 用版本号实现 at-most-once：`Put` 带 expected version，服务端只在版本匹配时更新并把版本加一；客户端超时后重发同一个 version，若第一次已经成功，第二次会得到 `ErrVersion`，客户端据此知道“已经生效”。`ErrMaybe` 更弱：它表示请求可能执行了，也可能没有；调用者必须用 `Get` 或其他方式确认，不能盲目重试。
+Lab 2 用版本号实现 at-most-once：`Put` 带 expected version，服务端只在版本匹配时更新并把版本加一；客户端超时后用同一个 version 重发，服务端不会执行第二次。关键是客户端**不能**从重发后的 `ErrVersion` 推断“已经生效”：第一次 RPC 可能执行了但回复丢了，也可能被别的客户端抢先改了 version，两次都没执行。官方 6.5840 的规则是：首次（未重发）收到 `ErrVersion` 返回 `ErrVersion`（确定没执行）；重发后收到 `ErrVersion` 必须返回 `ErrMaybe`（可能执行了）。`ErrMaybe` 表示结果不确定，调用者要用 `Get` 或其他方式确认，不能盲目重试。
 
 并发方面，goroutine 很便宜，但共享状态需要明确的锁。一个实用规则：锁保护数据，不保护 I/O；持锁时不要发 RPC、读文件、`time.Sleep`、往 channel 发送。channel 适合传递所有权和取消信号，不适合保护一个大 map。
 
@@ -97,7 +97,7 @@ Lab 2 用版本号实现 at-most-once：`Put` 带 expected version，服务端�
 
 GFS 把文件切成固定大小的 chunk，每个 chunk 存三个副本。master 只保存文件名、chunk 位置、lease 等元数据，客户端的数据读写不经过 master。写的时候，客户端先问 master 哪个 chunkserver 持有 lease；master 选一个 primary，返回副本列表；客户端把数据推到所有副本的缓存，再请 primary 分配序号并转发写；primary 决定顺序，所有副本按同一顺序应用。
 
-lease 解决“谁是 primary”。没有 lease，两个客户端可能同时认为自己是写者，副本就会写出不同顺序。lease 有有效期，primary 可以续租；master 在旧 lease 过期前不会发新的。GFS 的一致性模型不是线性一致：并发写和失败重试可能留下重复记录；它保证所有客户端看到相同的顺序，以及 append 的原子性（至少一次）。理解这一点，比记住“GFS 是强一致”更重要。
+lease 解决“谁是 primary”。没有 lease，两个客户端可能同时认为自己是写者，副本就会写出不同顺序。lease 有有效期，primary 可以续租；master 在旧 lease 过期前不会发新的。GFS 的一致性模型不是线性一致，也不是简单的“所有客户端看到相同顺序”：串行成功的写是 defined；并发成功的写是 consistent but undefined（所有客户端看到相同字节，但可能不对应任何一次写）；失败的写会让区域 inconsistent（不同客户端可能看到不同数据）。record append 只保证 at-least-once，可能重复并插入 padding。理解这张状态表，比记住“GFS 是强一致”更重要。
 
 **失败模式**
 
@@ -248,7 +248,15 @@ Raft 把每个 server 的状态压缩成几个变量：`currentTerm`、`votedFor
 
 **机制**
 
-Figure 8 的场景：term 2 的 leader 把一条 entry 复制到多数派，但还没提交就崩溃；term 3 选出新 leader，它可能没有这条 entry；旧 leader 恢复后又把这条 entry 复制到多数派。此时不能因为“多数派有”就提交它：term 4 的 leader 可能当选，并覆盖这条 entry。规则是：leader 只能通过提交当前 term 的条目来间接提交旧 term 的条目；旧条目要等当前 term 的一条新条目提交后才算提交。
+Figure 8 的场景要按五步看：
+
+1. **(a)** S1 是 term 2 的 leader，只把 index 2 的 entry 复制到 S1、S2 两个节点（2/5，不是多数派），还没提交就崩溃。
+2. **(b)** S5 靠 S3、S4、S5 的票当选 term 3 leader，在 index 2 写入了另一条 term 3 的 entry。
+3. **(c)** S5 崩溃；S1 重启，靠 S1、S2、S3 的票当选 term 4 leader，继续复制自己那条 term 2 的 entry。此时它在多数派上，但仍不能提交，因为它不是当前 term 的 entry。
+4. **(d)** S1 崩溃；S5 可以靠 S2、S3、S4 的票当选（term 5），用它 term 3 的 entry 覆盖 index 2。
+5. **(e)** 如果 S1 在崩溃前先复制并提交一条**当前 term（term 4）**的 entry，那么这条 entry 提交后，它前面的旧 entry 也随之间接提交，S5 就无法再当选并覆盖。
+
+规则是：leader 只能通过提交当前 term 的条目来间接提交旧 term 的条目；旧条目要等当前 term 的一条新条目提交后才算提交。实践中新 leader 常先提交一条当前 term 的 no-op entry，来尽快完成这件事。
 
 持久化：`currentTerm`、`votedFor`、`log` 在改变后、回复 RPC 前必须落盘；否则重启后可能在一个 term 投两票，或丢失已承诺的日志。`commitIndex`、`lastApplied`、`nextIndex`、`matchIndex` 可以重建，不需要持久化。snapshot 的 `lastIncludedIndex`、`lastIncludedTerm` 要持久化，因为它们替代了被截掉的日志。
 
@@ -318,12 +326,12 @@ snapshot：状态机定期把当前状态写成快照，告诉 Raft “这个 in
 
 ## 第 9 讲：ZooKeeper {#lec9}
 
-**一句话**：一个协调服务：znode、watch、session；用 ZAB 做复制，提供顺序一致性 + 客户端 FIFO。
+**一句话**：一个协调服务：znode、watch、session；用 ZAB 做复制，提供 linearizable writes + FIFO client order。
 
 **核心内容**
 
 - znode 树；临时节点；watch 一次性触发。
-- 顺序一致性 + 客户端 FIFO，而不是线性一致。
+- linearizable writes + FIFO client order；读可能陈旧，所以整体不是线性一致。
 - leader election、分布式锁、配置管理。
 - session 和 ephemeral node。
 
@@ -331,7 +339,7 @@ snapshot：状态机定期把当前状态写成快照，告诉 Raft “这个 in
 
 ZooKeeper 是一个小的复制状态机，数据组织成 znode 树。客户端建立 session；session 有效期内可以创建 ephemeral znode，session 断开后这些节点被删除。watch 是一次性触发器：客户端注册“这个节点变了叫我”，触发一次后要重新注册。它不保证你看到所有中间变化，只保证“在你注册之后、触发之前，至少有一次变化”。
 
-ZAB 是 ZooKeeper 的复制协议：leader 把写按 zxid 排序，follower 按顺序应用；读可以由 follower 本地服务，所以不同客户端可能看到不同的最新 zxid。ZooKeeper 提供顺序一致性（所有客户端看到相同的写顺序）和客户端 FIFO（同一个客户端的操作按顺序），但不是线性一致：一个客户端刚写完，另一个客户端可能读到旧值。
+ZAB 是 ZooKeeper 的复制协议：leader 把写按 zxid 排序，follower 按顺序应用；读可以由 follower 本地服务，所以不同客户端可能看到不同的最新 zxid。ZooKeeper 的写是线性一致的（所有更新请求可序列化并尊重 precedence），同时提供客户端 FIFO（同一个客户端的操作按发送顺序执行）和通知顺序。它整体不是线性一致：一个客户端刚写完，另一个客户端可能读到旧值；需要 read-your-writes 时用 `sync()`。
 
 这组保证足够做很多协调：leader election 用临时节点 + watch；分布式锁用顺序临时节点，最小序号持有锁；配置管理用 watch 监听变更。需要线性一致的场景（例如唯一 ID、严格读写）不能直接拿 ZooKeeper 的读来用。
 
@@ -349,7 +357,7 @@ ZAB 是 ZooKeeper 的复制协议：leader 把写按 zxid 排序，follower 按�
 
 **自测**
 
-- ZooKeeper 为什么不提供线性一致？
+- ZooKeeper 的写是线性一致的，为什么整体仍不是线性一致？
 - watch 保证什么、不保证什么？
 
 **作业**：[Lab 2](lab2.html) · [作业总览](labs.html)
@@ -414,7 +422,7 @@ ZAB 是 ZooKeeper 的复制协议：leader 把写按 zxid 排序，follower 按�
 - 锁不释放，造成死锁。
 - 把 2PC 当共识协议；它不解决 leader 选举。
 
-**延伸阅读（可选）**：[6.033 Chapter 9](papers.html#6033)；[2PC 材料](papers.html#6033)。
+**延伸阅读（可选）**：[6.033 Chapter 9](papers.html#6033)。
 
 **和 lab 的关系**：Lab 4/5 的配置变更、shard 迁移。
 
@@ -550,7 +558,7 @@ FaRM 把事务放在内存里，用 RDMA 单边读写作远端访问，primary �
 
 测试只能抽样。验证试图证明“实现的所有可能执行都满足规格”。规格是一个抽象状态机（例如“KV 服务对每个 key 表现为一个线性一致的寄存器”）；实现是具体代码；refinement 证明建立两者之间的模拟关系：实现的每一步都能对应到规格的一步，且不变式在每一步后成立。
 
-TLA+ 用状态机和时序逻辑描述规格，模型检查器穷举小规模状态；IronFleet 用交互式定理证明验证分布式协议（如 Raft 的变体）。代价是规格本身可能写错、证明工作量大、代码和模型可能脱节。验证不能替代测试，但能发现测试很难覆盖的边界。
+TLA+ 用状态机和时序逻辑描述规格，模型检查器穷举小规模状态；IronFleet 用交互式定理证明验证分布式协议：IronRSL 是 Paxos-based 的复制状态机，IronKV 是分片 KV（不是 Raft 的变体）。代价是规格本身可能写错、证明工作量大、代码和模型可能脱节。验证不能替代测试，但能发现测试很难覆盖的边界。
 
 **失败模式**
 
@@ -632,7 +640,7 @@ Serverless 的核心是把“启动一个进程”做成毫秒级。AWS Lambda �
 - 快照恢复后时钟、连接、随机数状态不一致。
 - 依赖包太大。
 
-**延伸阅读（可选）**：[AWS Lambda (2023)](papers.html#lambda)。
+**延伸阅读（可选）**：[AWS Lambda (2023)](papers.html#lambda)；[Firecracker (2020)](papers.html#firecracker)。
 
 **和 lab 的关系**：和 agent runtime / 进程内核的隔离、恢复问题接近。
 
