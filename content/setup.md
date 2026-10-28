@@ -14,6 +14,21 @@
 
 INFRA 02/03 需要 namespace、cgroup v2、mount、overlayfs、seccomp；这些在 WSL2 里通常都有。如果某个特性缺失，用一台 Linux VM，不要改 Windows 宿主。
 
+### macOS（只做 INFRA 01）
+
+```bash
+brew install go
+go version          # 需要 Go 1.22+
+mkdir -p ~/labs
+git clone git://g.csail.mit.edu/6.5840-golabs-2026 ~/labs/6.5840
+cd ~/labs/6.5840/src
+make mr
+```
+
+`make mr` 在 Lab 1 未实现前会挂住（`Done()` 还是 false），这是预期的；先读 [Lab 1](lab1.html)。
+
+内核实验（INFRA 02/03）需要 Linux VM：OrbStack、UTM 或 Lima 都可以；不要在 macOS 宿主上跑 namespace/cgroup 实验。
+
 ## 2. WSL2 安装
 
 在 Windows PowerShell：
@@ -50,7 +65,7 @@ sudo unshare -pf --mount-proc /bin/sh     # 应进入新的 PID/mount namespace
 ```bash
 sudo apt update
 sudo apt install -y build-essential git make curl jq iproute2 iptables nftables \
-  conntrack-tools strace libseccomp-dev attr fio
+  conntrack-tools strace libseccomp-dev attr fio busybox-static
 ```
 
 INFRA 01 需要 Go 1.22+：
@@ -65,6 +80,7 @@ go version
 ## 4. INFRA 01：Go 与实验仓库
 
 ```bash
+mkdir -p ~/labs
 cd ~/labs
 git clone git://g.csail.mit.edu/6.5840-golabs-2026 6.5840
 cd 6.5840/src
@@ -152,6 +168,23 @@ cat /sys/fs/cgroup/lab/cgroup.controllers
 ```
 
 如果 `unshare` 报 `Operation not permitted`，确认你在 WSL2/Linux 里、有 root，或 user namespace 没有被发行版禁用。Ubuntu 24.04 对非特权 user namespace 有 AppArmor 限制；在 VM 里调整，不要改宿主。
+
+### CN1 rootfs（INFRA 02）
+
+```bash
+sudo apt install -y busybox-static
+rootfs=~/labs/cn1-rootfs
+mkdir -p "$rootfs"/{bin,proc,sys,dev,tmp}
+cp /bin/busybox "$rootfs/bin/"
+for c in sh hostname cat readlink ps mount; do ln -sf busybox "$rootfs/bin/$c"; done
+sudo chroot "$rootfs" /bin/sh -c 'echo rootfs-ok'
+```
+
+`busybox-static` 是静态链接的，不需要再拷 libc。rootfs 目录要可写：judge 会写一个临时 marker 验证 rootfs 切换，结束后删除。之后用：
+
+```bash
+SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1
+```
 
 ## 6. 可选进阶工具
 

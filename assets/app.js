@@ -39,6 +39,7 @@
   document.querySelectorAll(".site-nav a[data-page]").forEach(function (a) {
     if (a.getAttribute("data-page") === page) {
       a.classList.add("active");
+      a.setAttribute("aria-current", "page");
     }
   });
 

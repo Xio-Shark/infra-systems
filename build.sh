@@ -23,12 +23,18 @@ for f in content/*.md; do
     title="$base"
   fi
 
+  toc=""
+  if [ "$(wc -l < "$f")" -gt 250 ]; then
+    toc="--toc --toc-depth=2"
+  fi
+
   pandoc "$f" \
     --from markdown+task_lists \
     --to html5 \
     --template=template.html \
     --metadata title="$title" \
     --variable asset_ver="$ver" \
+    $toc \
     --standalone \
     --output "dist/${base}.html"
 

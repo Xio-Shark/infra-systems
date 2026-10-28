@@ -126,8 +126,8 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab4 --quick
 
 ## 提交前检查
 
-- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
-- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
-- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
-- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
-- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。
+- [ ] `make rsm1` 和 `make kvraft1` 全绿；4B/4C 关键测试各跑 3 次。
+- [ ] 用默认 `-race` 跑过；`Submit` 只在 apply 后返回。
+- [ ] 去重表和 snapshot 包含在状态里；重启后不重复执行。
+- [ ] follower 返回 `ErrWrongLeader`；`Get` 不直接读本地 map。
+- [ ] 能讲清 RSM、线性一致读、snapshot 边界；写了 300 字复盘（模板见[评分标准](grading.html#reflection)）。

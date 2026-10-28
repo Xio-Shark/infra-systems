@@ -6,14 +6,14 @@
 
 ## 从这里开始
 
-讲义是主教材：读完对应讲义，再看本页和 lab 页的任务书，就可以开始。论文、官方页面和规范是参考，不是前置。
+讲义是导读和实验索引：读完对应讲义，再看本页和 lab 页的任务书，就可以开始。论文、官方页面和规范用来补完整论证，不是前置。
 
 **第一次学，按这个顺序：**
 
 1. **选一门课**：
    - 想学分布式系统和 Go → [INFRA 01](course-map.html)，从 [Lab 1](lab1.html) 开始。
    - 想学容器、Pod、网络 → [INFRA 02](cloud-native.html)，从 [CN1](cloud-native.html#lab-cn1) 开始。
-   - 想研究 agent 与内核 → 先完成 [INFRA 01](course-map.html) 的 Lab 1–4，或具备同等基础；再从 [AOS1](agent-os.html#lab-aos1) 开始。
+   - 想研究 agent 与内核 → 先完成 [INFRA 01](course-map.html) 的 Lab 1–4，并做过 [INFRA 02](cloud-native.html) 的 CN1–CN2（namespace/cgroup），或具备同等基础；再从 [AOS1](agent-os.html#lab-aos1) 开始。
 2. **每做一个 lab**：
    - 先读课程页对应的讲义，知道这个 lab 在解决什么问题。
    - 打开 lab 页，读“目标”“任务”“验收”“常见坑”。
@@ -29,14 +29,20 @@
 - 只跑一个失败测试，保留日志；不要同时改三处。
 - 先把路径缩到最小：一个任务、一个请求、一个 shard、一个容器；跑通再加并发和故障。
 - 测试通过但讲不清为什么，算没做完；测试失败但能解释边界，比碰巧通过有用。
+- 实在卡住：在[课程仓库 Issues](https://github.com/Xio-Shark/infra-systems/issues) 提问，附上 `./judge/run.sh --json` 输出、`go version`、`uname -a`；不要贴完整代码。
 
 ## 本地评分 {#judge}
 
+评分脚本在课程仓库的 `judge/` 里。第一次用：
+
 ```bash
+git clone https://github.com/Xio-Shark/infra-systems.git
+cd infra-systems
 ./judge/run.sh --list
 ./judge/run.sh infra01 lab1
-./judge/run.sh --all --quick
 ```
+
+`--quick` 只跑一小部分测试，是冒烟检查，最高显示 `PARTIAL`，不计为通过。
 
 **INFRA 01** 调用你本地的 6.5840 仓库：
 
@@ -47,7 +53,7 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab3
 **INFRA 02** 目前有 CN1 的契约测试：
 
 ```bash
-SUBMISSION=./cn1 CN1_ROOTFS=/path/to/rootfs ./judge/run.sh infra02 cn1
+SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1
 ```
 
 没有 `SUBMISSION` / `CN1_ROOTFS` 时显示 `SKIP`，不会假装通过。评分标准在 `judge/courses/*.json` 和 `judge/tests/`；接口在 `judge/contracts/`。INFRA 02/03 的其余实验接口还没冻结，按 `cn1.sh` 的格式补。
@@ -101,11 +107,26 @@ make shardkv     # Lab 5
 | AOS5 | Lease, fencing, audit | dual-owner rejection, hash chain, replay | [AOS5](agent-os.html#lab-aos5) |
 | Capstone | Minimal Agent OS | 8–10 operations, chaos tests, report | [Capstone](agent-os.html#lab-aos-capstone) |
 
+## 工时估计 {#hours}
+
+按 8–10 小时/周、已有 Go/Linux 基础估算；第一次做内核实验通常取上限。15 个 lab + 2 个 capstone 约 200–300 小时，加上讲义和论文约 250–350 小时。
+
+| lab | 预计 | lab | 预计 |
+|---|---|---|---|
+| Lab 1 MapReduce | 8–12h | CN1 container | 6–10h |
+| Lab 2 KV/lock | 6–10h | CN2 Pod | 8–12h |
+| Lab 3 Raft | 20–30h | CN3 CNI/Service | 10–14h |
+| Lab 4 RSM/KV | 8–12h | CN4 workspace | 8–12h |
+| Lab 5 shardkv | 10–15h | CN5 capstone | 15–25h |
+| AOS1 ABI/sandbox | 12–20h | AOS2 workspace | 10–16h |
+| AOS3 capability | 12–20h | AOS4 snapshot | 8–14h |
+| AOS5 lease/audit | 10–16h | Agent OS capstone | 20–30h |
+
 ## 完成标准
 
-- 本地 judge 的必做项通过；INFRA 01 的 `make` 还要过 `-race`。
+- 本地 judge 的必做项通过（`--quick` 不算）；INFRA 01 的 `make` 默认已带 `-race`。
 - 能不看代码讲清楚机制、失败模式、每个测试在测什么。
-- 每个 lab 写 300 字复盘：问题、设计、失败模式、测试结果。
+- 每个 lab 写 300 字复盘：问题、设计、失败模式、测试结果；模板见[评分标准](grading.html#reflection)。
 
 ## 环境
 

@@ -142,8 +142,8 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5 --quick
 
 ## 提交前检查
 
-- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
-- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
-- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
-- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
-- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。
+- [ ] `make shardkv` 全绿；5A/5B/5C 和 `Partition` 各跑 3 次。
+- [ ] 用默认 `-race` 跑过；配置 `Num` 单调、不分叉。
+- [ ] 迁移包含 KV、去重表、snapshot；freeze/install 期间旧 shard 不服务。
+- [ ] 旧 controller 的 RPC 被 `Num` 拒绝；`ErrWrongGroup` 会重新 `Query`。
+- [ ] 能讲清 shard 迁移和 controller 恢复；写了 300 字复盘（模板见[评分标准](grading.html#reflection)）。

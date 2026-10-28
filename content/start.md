@@ -8,14 +8,23 @@
 | 容器、Kubernetes 底层 | [INFRA 02](cloud-native.html) | [CN1](cloud-native.html#lab-cn1) | `./judge/run.sh infra02 cn1` |
 | agent 与内核（探索） | [INFRA 03](agent-os.html) | [AOS1](agent-os.html#lab-aos1) | 先按任务书自测 |
 
+## 第 0 步：拿到课程仓库
+
+```bash
+git clone https://github.com/Xio-Shark/infra-systems.git
+cd infra-systems
+```
+
+`judge/` 和全部任务书都在这里；6.5840 的实验代码在另一个目录（见[环境](setup.html)）。下面的 `./judge/run.sh` 都从这个目录运行。
+
 ## 怎么用
 
-讲义是主教材。每讲先讲问题和机制，读完讲义和 lab 页的任务书就能开始实验；论文、官方页面和规范是查细节的参考，不必先读。
+讲义是导读和实验索引：每讲先讲问题和机制，读完讲义和 lab 页的任务书就能开始实验；论文、官方页面和规范用来补完整论证，不必先读，但做完 lab 后应至少读对应章节。
 
 ## 每门课的第一步
 
 - **INFRA 01**：读[第 1 讲 MapReduce](lectures.html#lec1)，打开 [Lab 1](lab1.html)，实现后跑 `LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`。
-- **INFRA 02**：读[第 1 讲 从进程到容器](cloud-native.html#cn1)，打开 [CN1](cloud-native.html#lab-cn1)，实现后跑 `SUBMISSION=./cn1 CN1_ROOTFS=/path ./judge/run.sh infra02 cn1`。
+- **INFRA 02**：读[第 1 讲 从进程到容器](cloud-native.html#cn1)，打开 [CN1](cloud-native.html#lab-cn1)，实现后跑 `SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1`。
 - **INFRA 03**：读[第 1 讲 从 shell 到 syscall](agent-os.html#aos1)，打开 [AOS1](agent-os.html#lab-aos1)，先按任务书的验收项自测。
 
 ## 作业、评分、参考

@@ -20,6 +20,7 @@
 <nav class="site-nav">
   <div class="site-nav-inner">
     <a data-page="index.html" href="index.html">总览</a>
+    <a data-page="start.html" href="start.html">导引</a>
     <a data-page="course-map.html" href="course-map.html">01 分布式</a>
     <a data-page="cloud-native.html" href="cloud-native.html">02 云原生</a>
     <a data-page="agent-os.html" href="agent-os.html">03 Agent OS</a>
@@ -28,18 +29,24 @@
     <a data-page="papers.html" href="papers.html">阅读</a>
     <a data-page="glossary.html" href="glossary.html">术语表</a>
     <a data-page="setup.html" href="setup.html">环境</a>
-    <a data-page="start.html" href="start.html">导引</a>
   </div>
 </nav>
 
 <main>
+$if(toc)$
+<nav class="toc" aria-label="本页目录">
+  <p class="toc-title">本页目录</p>
+  $table-of-contents$
+</nav>
+$endif$
 $body$
 </main>
 
 <footer class="site-footer">
   <p>Infra Systems · 非官方课程。INFRA 01 参考 MIT 6.5840；INFRA 03 是探索性内容，不代表主流共识。课程、lab、论文的版权归原作者/出版方所有。</p>
   <p>内核实验请在一次性 Linux/WSL2 环境中进行。官方参考：<a href="https://pdos.csail.mit.edu/6.5840/" target="_blank" rel="noopener noreferrer">pdos.csail.mit.edu/6.5840</a></p>
-  <p>最后更新：2026-10-28</p>
+  <p>课程仓库（含 judge 和任务书）：<a href="https://github.com/Xio-Shark/infra-systems" target="_blank" rel="noopener noreferrer">github.com/Xio-Shark/infra-systems</a></p>
+  <p>最后更新：2026-10-29</p>
 </footer>
 
 <script src="assets/app.js?v=$asset_ver$"></script>

@@ -4,7 +4,7 @@ Live site: https://xio-shark.github.io/infra-systems/
 
 A static course site for three courses:
 
-- **INFRA 01 · Distributed Systems** — 21 lectures, 5 Go labs, based on the MIT 6.5840 schedule.
+- **INFRA 01 · Distributed Systems** — 21 lectures + project demos, 5 Go labs, based on the MIT 6.5840 schedule.
 - **INFRA 02 · Cloud-Native Systems** — 14 lectures, 5 Linux labs on containers, images, networking, and multi-container systems.
 - **INFRA 03 · Agent OS** — 12 lectures, 5 labs and a capstone on kernel-level atomic operations for agents. This is exploratory material, not a mainstream consensus.
 
@@ -29,8 +29,10 @@ python3 -m http.server 8000 -d dist
 ```bash
 ./judge/run.sh --list
 LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1
-SUBMISSION=./cn1 CN1_ROOTFS=/path/to/rootfs ./judge/run.sh infra02 cn1
+SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1
 ```
+
+`--quick` is a smoke test and never reports a full pass. `--json` keeps a meaningful exit code: 0 only when every selected lab is PASS.
 
 See `judge/README.md` for contracts and how to add a lab.
 

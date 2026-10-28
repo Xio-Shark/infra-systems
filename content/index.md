@@ -6,13 +6,22 @@
 
 ## 第一次来
 
-先选一门课，再按课程页的“怎么开始”做第一个作业。
+先选一门课，再按课程页的“怎么开始”做第一个作业。第一次来先读[导引](start.html)。
 
 | 你想学 | 先看 | 第一个作业 | 评分 |
 |---|---|---|---|
 | 分布式、Go、Raft | [INFRA 01](course-map.html) | [Lab 1](lab1.html) | `./judge/run.sh infra01 lab1` |
 | 容器、Kubernetes 底层 | [INFRA 02](cloud-native.html) | [CN1](cloud-native.html#lab-cn1) | `./judge/run.sh infra02 cn1` |
 | agent 与内核（探索） | [INFRA 03](agent-os.html) | [AOS1](agent-os.html#lab-aos1) | 先按任务书自测 |
+
+课程仓库（含 `judge/`、任务书和全部讲义）：
+
+```bash
+git clone https://github.com/Xio-Shark/infra-systems.git
+cd infra-systems
+```
+
+下面的 `./judge/run.sh` 都在这个目录里运行；6.5840 的实验代码在另一个目录（见[环境](setup.html)）。
 
 作业都在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)；阅读材料在 [阅读](papers.html)。
 
@@ -34,9 +43,9 @@ INFRA 03 读 seL4、gVisor、AIOS、Saga，设计一组新的原子操作，把 
 
 | 课程 | 名称 | 讲数 | 实验 | 先修 |
 |---|---|---|---|---|
-| INFRA 01 | [分布式系统](course-map.html) | 21 | 5 | Go、操作系统基础 |
+| INFRA 01 | [分布式系统](course-map.html) | 21 + demo | 5 | Go、操作系统基础 |
 | INFRA 02 | [云原生系统](cloud-native.html) | 14 | 5 | Linux/WSL2、C 或 Go |
-| INFRA 03 | [Agent OS](agent-os.html) | 12 | 5 + capstone | INFRA 01 或同等基础 |
+| INFRA 03 | [Agent OS](agent-os.html) | 12 | 5 + capstone | INFRA 01 Lab 1–4 + INFRA 02 CN1–CN2，或同等基础 |
 
 ## 先修要求
 
@@ -53,7 +62,7 @@ INFRA 03 读 seL4、gVisor、AIOS、Saga，设计一组新的原子操作，把 
 
 ## 考核
 
-INFRA 01 和 CN1 已有本地评分脚本，放在仓库的 `judge/` 目录：
+INFRA 01 和 CN1 有本地评分脚本，放在课程仓库的 `judge/` 目录；INFRA 02 的 CN2–CN5、INFRA 03 按任务书人工验收：
 
 ```bash
 ./judge/run.sh --list
@@ -70,14 +79,13 @@ INFRA 01 和 CN1 已有本地评分脚本，放在仓库的 `judge/` 目录：
 
 ## 阅读
 
-讲义是主教材；论文、白皮书和规范是延伸参考：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [阅读](papers.html)。
+讲义是导读；论文、白皮书和规范是深入参考：MapReduce、GFS、Paxos、Raft、Spanner、Borg、Firecracker、gVisor、seL4、AIOS，以及 OCI、CNI、CSI 规范。每篇的定位和阅读重点见 [阅读](papers.html)。
 
 ## 时间安排
 
-| 周 | 课程 | 内容 |
-|---|---|---|
-| 1–6 | INFRA 01 | MapReduce → Raft → RSM → sharded KV |
-| 7–10 | INFRA 02 | image → container → Pod → network/storage → capstone |
-| 11–14 | INFRA 03 | isolation → transactions → snapshots → ABI → capstone |
+| 节奏 | 安排 |
+|---|---|
+| 8–10 小时/周（推荐） | 24–30 周：INFRA 01 第 1–8 周；INFRA 02 第 9–16 周；INFRA 03 第 17–26 周；留 2–4 周缓冲 |
+| 15–20 小时/周（冲刺） | 14–18 周：INFRA 01 第 1–6 周；INFRA 02 第 7–11 周；INFRA 03 第 12–17 周 |
 
-按每周 8–10 小时设计；可以压缩或拉长。
+14 周表是冲刺路径；按 8–10 小时/周，整套通常要 24–30 周。每个 lab 的粗估工时见[作业与实验](labs.html#hours)。

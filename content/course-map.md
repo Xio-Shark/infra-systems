@@ -1,6 +1,6 @@
 # INFRA 01 · 分布式系统
 
-> 21 lectures · 5 labs · Go
+> 21 lectures + project demos · 5 labs · Go
 >
 > 参考 MIT 6.5840 Spring 2026 的日程。
 
@@ -84,7 +84,7 @@ Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。时间有限时可以做到
 - 本地 judge 通过：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 labN`。
 - `make ...` 全绿，`-race` 也过。
 - 能不看代码讲清楚协议、失败模式、每个测试在测什么。
-- 每个 lab 写 300 字：问题、设计、失败模式、如果放进多容器平台或 agent runtime 会怎样。
+- 每个 lab 写 300 字复盘：问题、设计、失败模式、测试结果；再加一句“如果放进多容器平台或 agent runtime 会怎样”。模板见[评分标准](grading.html#reflection)。
 - 代码私有；不公开可直接复制的答案。
 
 ## 阅读

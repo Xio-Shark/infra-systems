@@ -133,8 +133,8 @@ LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1 --quick
 
 ## 提交前检查
 
-- [ ] 对应 `make` 目标全绿；关键的故障测试重复跑 3 次没有偶发失败。
-- [ ] 开 `-race` 跑过；没有 data race 或 goroutine 泄漏。
-- [ ] 没有残留的临时文件、子进程、namespace、cgroup。
-- [ ] 能不看代码讲清楚：核心不变量、失败恢复路径、每个测试在测什么。
-- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果。
+- [ ] `make mr` 全绿；`-run Crash` 连续跑 3 次没有偶发失败。
+- [ ] 用默认 `-race` 跑过；没有 data race 或 goroutine 泄漏。
+- [ ] 没有残留的 `mr-tmp-*`、临时文件和 worker 进程。
+- [ ] 能不看代码讲清楚：`mr-X-Y` 的原子发布、重复报告幂等、`Done()` 的退出条件。
+- [ ] 写了 300 字复盘：问题、设计、失败模式、测试结果（模板见[评分标准](grading.html#reflection)）。
