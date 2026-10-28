@@ -22,6 +22,18 @@ Output is in `dist/`. Open `dist/index.html` or serve it locally:
 python3 -m http.server 8000 -d dist
 ```
 
+## Local judge
+
+`judge/` runs behavioral tests and reports a score. It does not contain solutions.
+
+```bash
+./judge/run.sh --list
+LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1
+SUBMISSION=./cn1 CN1_ROOTFS=/path/to/rootfs ./judge/run.sh infra02 cn1
+```
+
+See `judge/README.md` for contracts and how to add a lab.
+
 ## GitHub Pages
 
 The repository includes `.github/workflows/pages.yml`, which builds the site with Pandoc and deploys `dist/` to GitHub Pages.
@@ -44,12 +56,14 @@ content/          Markdown sources
   cloud-native.md INFRA 02 course page + notes
   agent-os.md     INFRA 03 course page + notes
   lectures.md     INFRA 01 lecture notes
-  labs.md         all assignments
+  labs.md         lab overview and local judge usage
+  lab1.md … lab5.md  INFRA 01 lab task specs
   papers.md       readings
   glossary.md     glossary
   setup.md        Linux/WSL2 environment
   rules.md        policies
 assets/           style.css, app.js
+judge/            local grading scripts, contracts, and test configs
 template.html     Pandoc template
 build.sh          build script
 dist/             generated site

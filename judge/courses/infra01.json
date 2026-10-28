@@ -1,0 +1,35 @@
+{
+  "title": "INFRA 01 · 分布式系统",
+  "labs": {
+    "lab1": {
+      "title": "MapReduce",
+      "script": "lab1.sh",
+      "weight": 20,
+      "timeout": 1200
+    },
+    "lab2": {
+      "title": "KV Server 与锁",
+      "script": "lab2.sh",
+      "weight": 20,
+      "timeout": 900
+    },
+    "lab3": {
+      "title": "Raft",
+      "script": "lab3.sh",
+      "weight": 20,
+      "timeout": 1800
+    },
+    "lab4": {
+      "title": "Fault-tolerant KV",
+      "script": "lab4.sh",
+      "weight": 20,
+      "timeout": 1200
+    },
+    "lab5": {
+      "title": "Sharded KV",
+      "script": "lab5.sh",
+      "weight": 20,
+      "timeout": 1200
+    }
+  }
+}

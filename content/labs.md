@@ -23,6 +23,30 @@
 
 如果只是想先跑通一个最小例子，从 [INFRA 01 Lab 1](lab1.html) 或 [INFRA 02 CN1](cloud-native.html#lab-cn1) 开始；两者都不需要 Kubernetes。
 
+## 本地评分 {#judge}
+
+仓库里有 `judge/`，只检查行为，不提供实现。
+
+```bash
+./judge/run.sh --list
+./judge/run.sh infra01 lab1
+./judge/run.sh --all --quick
+```
+
+**INFRA 01** 调用你本地的 6.5840 仓库：
+
+```bash
+LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab3
+```
+
+**INFRA 02** 目前有 CN1 的契约测试：
+
+```bash
+SUBMISSION=./cn1 CN1_ROOTFS=/path/to/rootfs ./judge/run.sh infra02 cn1
+```
+
+没有 `SUBMISSION` / `CN1_ROOTFS` 时显示 `SKIP`，不会假装通过。评分标准在 `judge/courses/*.json` 和 `judge/tests/`；接口在 `judge/contracts/`。INFRA 02/03 的其余实验接口还没冻结，按 `cn1.sh` 的格式补。
+
 ## INFRA 01 · 分布式系统
 
 | # | 实验 | 内容 | 说明 |
@@ -74,7 +98,7 @@ make shardkv     # Lab 5
 
 ## 完成标准
 
-- 实验通过验收测试；INFRA 01 的 `make` 要过 `-race`。
+- 本地 judge 的必做项通过；INFRA 01 的 `make` 还要过 `-race`。
 - 能不看代码讲清楚机制、失败模式、每个测试在测什么。
 - 每个 lab 写 300 字：问题、设计、失败模式、如果换一个系统会怎样。
 - 代码私有；不公开可直接复制的答案。

@@ -1,0 +1,11 @@
+{
+  "title": "INFRA 02 · 云原生系统",
+  "labs": {
+    "cn1": {
+      "title": "从零做一个容器",
+      "script": "cn1.sh",
+      "weight": 20,
+      "timeout": 300
+    }
+  }
+}
