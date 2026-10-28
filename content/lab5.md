@@ -2,7 +2,7 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 5/5**
 >
-> **先读**：[第 12 讲 Spanner](lectures.html#lec12) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-shard1.html) · [阅读](papers.html)
+> **先读**：[第 12 讲 Spanner](lectures.html#lec12) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-shard1.html) · [Spanner 论文](https://research.google/pubs/pub39966/)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab5` · [评分标准](grading.html)
 >

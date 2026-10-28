@@ -106,6 +106,10 @@ cgroup v2 负责资源，不负责隔离。`cpu.max` 限制 CPU 带宽，`memory
 - 为什么容器里的 `ps` 看不到宿主进程？还有哪些东西没有隔离？
 - `memory.high` 和 `memory.max` 的行为有什么不同？
 
+**作业**：[CN1](#lab-cn1) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 2 讲：容器运行时与 CRI {#cn2}
 
 `kubectl apply` 是声明式的，但最终一定要有人 `fork` 一个进程。这条路径大致是：API server 收到 Pod 对象，scheduler 选节点，kubelet 调 CRI，containerd 准备镜像和快照，runc 创建 namespace/cgroup 并 `execve`，最后 `containerd-shim` 留下来看住这个进程。
@@ -122,6 +126,10 @@ CRI 是 kubelet 和运行时之间的接口：`RunPodSandbox` 创建 Pod 的沙�
 
 - containerd 重启后，为什么已经运行的容器不会死？
 - pause 容器到底持有什么？为什么不能直接用业务容器当沙箱？
+
+**作业**：[CN1](#lab-cn1) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 第 3 讲：镜像、构建与供应链 {#cn3}
 
@@ -140,6 +148,10 @@ CRI 是 kubelet 和运行时之间的接口：`RunPodSandbox` 创建 Pod 的沙�
 - 为什么不能只凭 tag 判断镜像内容？
 - 多阶段构建省掉了什么？它有没有引入新的风险？
 - SBOM 和签名分别解决什么问题？它们能防住什么，防不住什么？
+
+**作业**：[CN1](#lab-cn1) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 第 4 讲：Pod 是多容器的最小单位 {#cn4}
 
@@ -160,6 +172,10 @@ init container 按顺序执行，每个都必须成功退出，才会启动下�
 - 经典 sidecar 为什么不能保证在 app 之前启动？native sidecar 改了什么？
 - `shareProcessNamespace` 打开了什么？关闭时容器之间还能怎么发信号？
 
+**作业**：[CN2](#lab-cn2) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 5 讲：生命周期、信号与优雅退出 {#cn5}
 
 Pod 卡在 Terminating 是最常见的多容器故障之一。表面上看是“删除很慢”，实际原因通常有三类：容器里的 PID 1 不转发信号；sidecar 还在等一个永远不会来的连接；`preStop` 或 `terminationGracePeriodSeconds` 配得太长。
@@ -179,6 +195,10 @@ Kubernetes 删除 Pod 的流程大致是：API server 标记 deletionTimestamp�
 - 为什么 `docker stop` 有时要等 10 秒？`SIGTERM` 到底发给了谁？
 - native sidecar 的终止顺序是什么？为什么这个顺序对日志很重要？
 
+**作业**：[CN2](#lab-cn2) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 6 讲：多容器网络 {#cn6}
 
 Pod 网络的目标是：每个 Pod 有一个集群内可路由的 IP；Pod 内的容器共享这个 IP 和端口空间；Pod 之间可以直接通信；Service 提供一个稳定的虚拟 IP。实现这件事的层次不少：network namespace、veth pair、bridge、路由、NAT、conntrack、CNI、kube-proxy、DNS。
@@ -195,6 +215,10 @@ Service 的 ClusterIP 是一个虚拟 IP，没有网卡持有它。kube-proxy �
 
 - 为什么 Pod 需要一个 pause 容器来持有网络？没有它会怎样？
 - `hostNetwork: true` 会破坏哪些假设？
+
+**作业**：[CN3](#lab-cn3) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 第 7 讲：服务通信与可靠性 {#cn7}
 
@@ -214,6 +238,10 @@ TCP 建连有握手和 backlog；大量短连接会让 `TIME_WAIT` 堆积。HTTP
 - DNS 解析失败和 TCP 连接失败，排查手段有什么不同？
 - gRPC 的 deadline 怎么跨服务传播？不传播会发生什么？
 
+**作业**：[CN3](#lab-cn3) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 8 讲：多容器存储与工作区原子性 {#cn8}
 
 多容器共享卷是最方便的 IPC，也是最容易出 race 的地方。两个容器同时写一个文件，POSIX 的 `write` 并不保证“读者看到完整内容”；一个容器写完没 `fsync`，节点崩溃后文件可能只写了一半；一个容器用 `rename` 做原子替换，另一个容器却打开着旧文件，看到的是旧 inode。
@@ -230,6 +258,10 @@ Kubernetes 的卷抽象有几层：`emptyDir` 随 Pod 创建和删除，适合�
 
 - `ReadWriteOnce` 为什么不是文件锁？
 - `fsync` 文件之后，为什么还要 `fsync` 目录？
+
+**作业**：[CN4](#lab-cn4) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 第 9 讲：调度与资源 {#cn9}
 
@@ -248,6 +280,10 @@ cgroup v2 的接口比 v1 统一：`cpu.max` 是“配额/周期”，`cpu.weigh
 - Guaranteed Pod 为什么仍可能被 CPU throttled？
 - `memory.high` 和 `memory.max` 的差别是什么？哪个会 kill 进程？
 
+**作业**：[CN5](#lab-cn5) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 10 讲：隔离与安全 {#cn10}
 
 容器安全的第一原则是：**容器不是安全边界，除非你额外做了隔离**。默认的 Docker/containerd 容器共享宿主内核；如果容器以 root 运行、有 `CAP_SYS_ADMIN`、挂载了宿主目录、或者内核有漏洞，逃逸是现实风险。
@@ -264,6 +300,10 @@ cgroup v2 的接口比 v1 统一：`cpu.max` 是“配额/周期”，`cpu.weigh
 
 - 有了 user namespace，为什么容器里的 root 仍然危险？
 - seccomp 不能阻止什么？为什么它不能替代 Landlock？
+
+**作业**：[CN5](#lab-cn5) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 第 11 讲：Sidecar 与服务网格 {#cn11}
 
@@ -282,6 +322,10 @@ Sidecar 的思路是：把网络治理逻辑（mTLS、重试、超时、熔断�
 - Sidecar 为什么不能对所有协议透明？哪些协议需要额外配置？
 - 重试为什么会放大故障？超时和重试应该怎么配合？
 
+**作业**：[CN3](#lab-cn3) · [CN5](#lab-cn5) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 12 讲：有状态多容器 {#cn12}
 
 无状态服务可以随便重启、随便换节点；有状态服务不行。StatefulSet 给每个 Pod 一个稳定的名字（`pod-0`、`pod-1`）、稳定的网络标识（headless Service）和稳定的存储（PVC 模板）。它按顺序创建、按逆序删除，保证 `pod-0` 先起来；但它不保证“同一时刻只有一个 leader”，那要靠应用自己的选主。
@@ -298,6 +342,10 @@ Operator 把运维知识写成控制器：watch 自定义资源，比较 desired
 
 - StatefulSet 为什么需要 headless Service？
 - 两个 Pod 同时认为自己 leader，哪些机制能阻止双写？
+
+**作业**：[CN5](#lab-cn5) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 第 13 讲：可观测性与性能 {#cn13}
 
@@ -318,6 +366,10 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 - 为什么平均 CPU 会误导？你会看哪些指标判断 throttling？
 - requests 和 usage 的差值对成本意味着什么？
 
+**作业**：[CN5](#lab-cn5) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
+
 ## 第 14 讲：Capstone——多容器 Agent 平台 {#cn14}
 
 这门课的 capstone 不是一个“能跑”的 demo，而是一个能解释故障的迷你平台。你要做一个节点级 agent：读一个 Pod 风格的 spec，创建共享 netns，按顺序跑 init container，启动 app 和 sidecar，挂共享卷，设 cgroup 限制，处理信号和优雅退出，暴露 metrics 和日志，并能注入故障。
@@ -336,6 +388,10 @@ Metrics 有 counter、gauge、histogram；histogram 能算分位数，平均值�
 验收看四件事：**能不能起来**、**坏了能不能恢复**、**能不能解释为什么**、**有没有把权限限制住**。不看你用了多少 Kubernetes API。
 
 这个 capstone 的“tool runner”容器其实就是一个 agent 的任务进程。它现在只会跑命令；INFRA 03 会教你怎么给它定义原子操作、事务、快照和审计。
+
+**作业**：[CN5 capstone](#lab-cn5) · [作业总览](labs.html)
+
+**参考**：[阅读](papers.html)
 
 ## 实验
 

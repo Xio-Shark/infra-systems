@@ -31,27 +31,27 @@
 
 | # | 主题 | 阅读 | 讲义 |
 |---|---|---|---|
-| 1 | Introduction — MapReduce, coordinator/worker | MapReduce (2004) | [Notes](lectures.html#lec1) |
-| 2 | RPC and Threads — at-most-once, retries, Go concurrency | Go concurrency docs | [Notes](lectures.html#lec2) |
-| 3 | GFS — master, chunkserver, lease, atomic append | GFS (2003) | [Notes](lectures.html#lec3) |
-| 4 | Paxos — proposer/acceptor/learner, quorum | Paxos Made Simple | [Notes](lectures.html#lec4) |
-| 5 | Go Patterns — context, pipeline, cancellation | Go docs | [Notes](lectures.html#lec5) |
-| 6 | Raft (1) — election, term, AppendEntries | Raft §5 | [Notes](lectures.html#lec6) |
-| 7 | Raft (2) — commit, persistence, snapshot, linearizability | Raft §5–7 | [Notes](lectures.html#lec7) |
-| 8 | Linearizability — histories, real-time order, composition | Linearizability (1990) | [Notes](lectures.html#lec8) |
-| 9 | ZooKeeper — znode, watch, ZAB, sessions | ZooKeeper (2010) | [Notes](lectures.html#lec9) |
-| 10 | Lab 3 Q&A — Figure 2, races, deadlocks | Raft §5–7 | [Notes](lectures.html#lec10) |
-| 11 | Distributed Transactions — 2PC, atomic commit, serializability | 6.033 ch. 9 | [Notes](lectures.html#lec11) |
-| 12 | Spanner — TrueTime, Paxos groups, external consistency | Spanner (2012) | [Notes](lectures.html#lec12) |
-| 13 | Chain Replication — strong consistency, read at tail | Chain Replication (2004) | [Notes](lectures.html#lec13) |
-| 14 | OCC / FaRM — optimistic concurrency, RDMA, transactions | FaRM (2014) | [Notes](lectures.html#lec14) |
-| 15 | Verification — IronFleet, TLA+, refinement | IronFleet (2015) | [Notes](lectures.html#lec15) |
-| 16 | Memcached at Facebook — leases, tail latency | Memcached (2013) | [Notes](lectures.html#lec16) |
-| 17 | AWS Lambda — isolation, cold start, snapshots, Firecracker | Lambda / Firecracker | [Notes](lectures.html#lec17) |
-| 18 | Ray — task/actor, scheduling, lineage | Ray (2018) | [Notes](lectures.html#lec18) |
-| 19 | SUNDR — fork consistency on untrusted storage | SUNDR (2004) | [Notes](lectures.html#lec19) |
-| 20 | Bitcoin — proof-of-work, longest chain, double spend | Bitcoin (2008) | [Notes](lectures.html#lec20) |
-| 21 | Byzantine Fault Tolerance — PBFT, 3f+1 | PBFT (1999) | [Notes](lectures.html#lec21) |
+| 1 | Introduction — MapReduce, coordinator/worker | [MapReduce](papers.html#mapreduce) | [Notes](lectures.html#lec1) |
+| 2 | RPC and Threads — at-most-once, retries, Go concurrency | [Go concurrency](https://go.dev/doc/effective_go#concurrency) | [Notes](lectures.html#lec2) |
+| 3 | GFS — master, chunkserver, lease, atomic append | [GFS](papers.html#gfs) | [Notes](lectures.html#lec3) |
+| 4 | Paxos — proposer/acceptor/learner, quorum | [Paxos](papers.html#paxos) | [Notes](lectures.html#lec4) |
+| 5 | Go Patterns — context, pipeline, cancellation | [Go docs](https://go.dev/doc/) | [Notes](lectures.html#lec5) |
+| 6 | Raft (1) — election, term, AppendEntries | [Raft](papers.html#raft) | [Notes](lectures.html#lec6) |
+| 7 | Raft (2) — commit, persistence, snapshot, linearizability | [Raft](papers.html#raft) | [Notes](lectures.html#lec7) |
+| 8 | Linearizability — histories, real-time order, composition | [Linearizability](papers.html#linearizability) | [Notes](lectures.html#lec8) |
+| 9 | ZooKeeper — znode, watch, ZAB, sessions | [ZooKeeper](papers.html#zookeeper) | [Notes](lectures.html#lec9) |
+| 10 | Lab 3 Q&A — Figure 2, races, deadlocks | [Raft](papers.html#raft) | [Notes](lectures.html#lec10) |
+| 11 | Distributed Transactions — 2PC, atomic commit, serializability | [6.033 ch. 9](papers.html#6033) | [Notes](lectures.html#lec11) |
+| 12 | Spanner — TrueTime, Paxos groups, external consistency | [Spanner](papers.html#spanner) | [Notes](lectures.html#lec12) |
+| 13 | Chain Replication — strong consistency, read at tail | [Chain Replication](papers.html#chain-replication) | [Notes](lectures.html#lec13) |
+| 14 | OCC / FaRM — optimistic concurrency, RDMA, transactions | [FaRM](papers.html#farm) | [Notes](lectures.html#lec14) |
+| 15 | Verification — IronFleet, TLA+, refinement | [IronFleet](papers.html#ironfleet) | [Notes](lectures.html#lec15) |
+| 16 | Memcached at Facebook — leases, tail latency | [Memcached](papers.html#memcached) | [Notes](lectures.html#lec16) |
+| 17 | AWS Lambda — isolation, cold start, snapshots, Firecracker | [Lambda](papers.html#lambda) / [Firecracker](papers.html#firecracker) | [Notes](lectures.html#lec17) |
+| 18 | Ray — task/actor, scheduling, lineage | [Ray](papers.html#ray) | [Notes](lectures.html#lec18) |
+| 19 | SUNDR — fork consistency on untrusted storage | [SUNDR](papers.html#sundr) | [Notes](lectures.html#lec19) |
+| 20 | Bitcoin — proof-of-work, longest chain, double spend | [Bitcoin](papers.html#bitcoin) | [Notes](lectures.html#lec20) |
+| 21 | Byzantine Fault Tolerance — PBFT, 3f+1 | [PBFT](papers.html#pbft) | [Notes](lectures.html#lec21) |
 | 22 | Project demos | — | [Notes](lectures.html#lec22) |
 
 > 第 10 讲是 Lab 3 的 Q&A，不是新论文；第 22 讲是项目展示。

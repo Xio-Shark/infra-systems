@@ -2,7 +2,7 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 4/5**
 >
-> **先读**：[第 6 讲 Raft (1)](lectures.html#lec6) 和 [第 7 讲 Raft (2)](lectures.html#lec7) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvraft1.html) · [阅读](papers.html)
+> **先读**：[第 6 讲 Raft (1)](lectures.html#lec6) 和 [第 7 讲 Raft (2)](lectures.html#lec7) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvraft1.html) · [Raft 论文](https://raft.github.io/raft.pdf)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab4` · [评分标准](grading.html)
 >

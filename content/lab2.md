@@ -2,7 +2,7 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 2/5**
 >
-> **先读**：[第 2 讲 RPC and Threads](lectures.html#lec2) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvsrv1.html) · [阅读](papers.html)
+> **先读**：[第 2 讲 RPC and Threads](lectures.html#lec2) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-kvsrv1.html) · [Go 并发](https://go.dev/doc/effective_go#concurrency) · [阅读](papers.html)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2` · [评分标准](grading.html)
 >

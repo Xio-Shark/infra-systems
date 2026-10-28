@@ -2,7 +2,7 @@
 
 > **课程**：[INFRA 01 · 分布式系统](course-map.html) · **实验 1/5**
 >
-> **先读**：[第 1 讲 MapReduce](lectures.html#lec1) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html) · [MapReduce 论文](papers.html)
+> **先读**：[第 1 讲 MapReduce](lectures.html#lec1) · **参考**：[官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html) · [MapReduce 论文](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf)
 >
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1` · [评分标准](grading.html)
 >

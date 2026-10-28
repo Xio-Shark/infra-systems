@@ -17,7 +17,7 @@
 - coordinator 分任务，worker 执行；失败/慢节点用超时重发。
 - 输出用临时文件 + 原子 rename，避免留下写了一半的文件。
 
-**阅读**：MapReduce (2004)。
+**阅读**：[MapReduce (2004)](papers.html#mapreduce)。
 
 **和 lab 的关系**：Lab 1 就是简化版 MapReduce。
 
@@ -25,6 +25,8 @@
 
 - 为什么 map 输出要按 key 分成 `nReduce` 个桶？
 - worker 写完输出但没来得及报告就崩溃，会发生什么？
+
+**作业**：[Lab 1](lab1.html) · [作业总览](labs.html)
 
 ## 第 2 讲：RPC and Threads {#lec2}
 
@@ -37,7 +39,7 @@
 - Go 的 goroutine、channel、mutex；什么时候用锁，什么时候用 channel。
 - 例子：crawler、KV、vote。
 
-**阅读**：Go 并发章节；课程给的 crawler/kv/vote 代码。
+**阅读**：[Go 并发](https://go.dev/doc/effective_go#concurrency)；课程给的 crawler/kv/vote 代码。
 
 **和 lab 的关系**：Lab 1/2 的 RPC 和重试；Lab 3 的 RPC handler 并发。
 
@@ -45,6 +47,8 @@
 
 - 为什么 exactly-once 难？`ErrMaybe` 表示什么？
 - 持锁时发 RPC 会有什么问题？
+
+**作业**：[Lab 1](lab1.html) · [Lab 2](lab2.html) · [作业总览](labs.html)
 
 ## 第 3 讲：GFS {#lec3}
 
@@ -58,7 +62,7 @@
 - 原子追加（atomic append）的语义；snapshot 用 copy-on-write。
 - 失败恢复：master 崩溃、chunkserver 崩溃、网络分区。
 
-**阅读**：GFS (2003)。
+**阅读**：[GFS (2003)](papers.html#gfs)。
 
 **和 lab 的关系**：理解“复制 + 租约 + 失败恢复”的工程取舍；Lab 3 的 Raft 是另一条路线。
 
@@ -66,6 +70,8 @@
 
 - 为什么需要 lease？没有 lease 会怎样？
 - GFS 的一致性模型是什么？它保证什么、不保证什么？
+
+**作业**：[Lab 1](lab1.html) · [作业总览](labs.html)
 
 ## 第 4 讲：Paxos {#lec4}
 
@@ -78,7 +84,7 @@
 - safety 和 liveness 的区别；活锁和随机退避。
 - multi-Paxos：把共识用到日志上。
 
-**阅读**：Paxos Made Simple；Paxos (2001)。
+**阅读**：[Paxos Made Simple](papers.html#paxos)；[Paxos (2001)](papers.html#paxos)。
 
 **和 lab 的关系**：Raft 是更易理解的 Paxos 变体；对照读更容易懂 Raft。
 
@@ -86,6 +92,8 @@
 
 - 为什么需要多数派？
 - Paxos 能保证 liveness 吗？为什么？
+
+**作业**：[Lab 3](lab3.html) · [作业总览](labs.html)
 
 ## 第 5 讲：Go Patterns {#lec5}
 
@@ -98,7 +106,7 @@
 - 关闭 channel 的规则；谁生产谁关闭。
 - 避免在循环里泄漏 goroutine；用 `select` 处理取消。
 
-**阅读**：Go 官方博客的 concurrency patterns；Russ Cox 的演讲。
+**阅读**：[Go concurrency patterns](https://go.dev/talks/2012/concurrency.slide)；[Russ Cox 的演讲](https://go.dev/talks/)。
 
 **和 lab 的关系**：Lab 1/3 的并发结构；Lab 3 的 ticker/apply goroutine。
 
@@ -106,6 +114,8 @@
 
 - 怎么取消一个 pipeline？
 - 为什么不应该在多个 goroutine 里读同一个 `applyCh`？
+
+**作业**：[Lab 1](lab1.html) · [Lab 2](lab2.html) · [作业总览](labs.html)
 
 ## 第 6 讲：Raft (1) {#lec6}
 
@@ -119,7 +129,7 @@
 - 日志匹配：`PrevLogIndex` / `PrevLogTerm`。
 - 选举限制：候选人日志必须至少和 voter 一样新。
 
-**阅读**：Raft 论文第 5.1–5.3 节；Figure 2。
+**阅读**：[Raft 论文第 5.1–5.3 节](https://raft.github.io/raft.pdf)；Figure 2。
 
 **和 lab 的关系**：Lab 3A/3B。
 
@@ -127,6 +137,8 @@
 
 - 为什么候选人日志短了不能当选？
 - split vote 怎么解决？
+
+**作业**：[Lab 3](lab3.html) · [作业总览](labs.html)
 
 ## 第 7 讲：Raft (2) {#lec7}
 
@@ -139,7 +151,7 @@
 - snapshot / log compaction；`InstallSnapshot`。
 - 客户端交互：去重、线性一致读。
 
-**阅读**：Raft 论文第 5.4、7、8 节。
+**阅读**：[Raft 论文第 5.4、7、8 节](https://raft.github.io/raft.pdf)。
 
 **和 lab 的关系**：Lab 3B–3D；Lab 4。
 
@@ -147,6 +159,8 @@
 
 - 为什么不能直接提交旧 term 的 entry？
 - snapshot 的 index 和 `commitIndex` 有什么区别？
+
+**作业**：[Lab 3](lab3.html) · [作业总览](labs.html)
 
 ## 第 8 讲：Linearizability {#lec8}
 
@@ -160,7 +174,7 @@
 - 线性化点；可组合性。
 - 和 serializability 的区别。
 
-**阅读**：Linearizability (1990)。
+**阅读**：[Linearizability (1990)](papers.html#linearizability)。
 
 **和 lab 的关系**：Lab 2/4 的 KV 要求线性一致；测试用 porcupine 检查。
 
@@ -168,6 +182,8 @@
 
 - 一个 stale read 是线性一致的吗？
 - 两个并发 Put，怎么判断哪个先生效？
+
+**作业**：[Lab 2](lab2.html) · [Lab 3](lab3.html) · [Lab 4](lab4.html) · [作业总览](labs.html)
 
 ## 第 9 讲：ZooKeeper {#lec9}
 
@@ -180,7 +196,7 @@
 - leader election、分布式锁、配置管理。
 - session 和 ephemeral node。
 
-**阅读**：ZooKeeper (2010)。
+**阅读**：[ZooKeeper (2010)](papers.html#zookeeper)。
 
 **和 lab 的关系**：Lab 2 的锁；Lab 5 的 controller/配置服务。
 
@@ -188,6 +204,8 @@
 
 - ZooKeeper 为什么不提供线性一致？
 - watch 保证什么、不保证什么？
+
+**作业**：[Lab 2](lab2.html) · [作业总览](labs.html)
 
 ## 第 10 讲：Lab 3 Q&A {#lec10}
 
@@ -200,7 +218,7 @@
 - 持久化：term/votedFor/log 的变化点。
 - 测试：3A → 3B → 3C → 3D；`-race`；可视化 timeline。
 
-**阅读**：Raft structure / locking advice。
+**阅读**：[Raft structure advice](https://pdos.csail.mit.edu/6.5840/labs/raft-structure.txt)；[locking advice](https://pdos.csail.mit.edu/6.5840/labs/raft-locking.txt)。
 
 **和 lab 的关系**：Lab 3。
 
@@ -208,6 +226,8 @@
 
 - 你的 Raft 在什么情况下会提交旧 term 的 entry？
 - 你怎么证明 `applyCh` 是顺序的？
+
+**作业**：[Lab 3](lab3.html) · [作业总览](labs.html)
 
 ## 第 11 讲：Distributed Transactions {#lec11}
 
@@ -220,7 +240,7 @@
 - 锁和死锁；可串行化。
 - 和 Paxos/Raft 的关系：复制 + 原子提交。
 
-**阅读**：6.033 Chapter 9；2PC 材料。
+**阅读**：[6.033 Chapter 9](papers.html#6033)；[2PC 材料](papers.html#6033)。
 
 **和 lab 的关系**：Lab 4/5 的配置变更、shard 迁移。
 
@@ -228,6 +248,8 @@
 
 - 2PC 为什么可能阻塞？
 - 怎么从 coordinator 崩溃中恢复？
+
+**作业**：[Lab 4](lab4.html) · [Lab 5](lab5.html) · [作业总览](labs.html)
 
 ## 第 12 讲：Spanner {#lec12}
 
@@ -240,7 +262,7 @@
 - 外部一致性：全局实时序。
 - 只读事务、snapshot read。
 
-**阅读**：Spanner (2012)。
+**阅读**：[Spanner (2012)](papers.html#spanner)。
 
 **和 lab 的关系**：Lab 5 的分片 + 配置变更。
 
@@ -248,6 +270,8 @@
 
 - TrueTime 的误差区间怎么用？
 - 外部一致性和线性一致的关系？
+
+**作业**：[Lab 5](lab5.html) · [作业总览](labs.html)
 
 ## 第 13 讲：Chain Replication {#lec13}
 
@@ -260,7 +284,7 @@
 - 吞吐和可用性的取舍。
 - 和 Raft 的对比。
 
-**阅读**：Chain Replication (2004)。
+**阅读**：[Chain Replication (2004)](papers.html#chain-replication)。
 
 **和 lab 的关系**：Lab 3 的对照；理解复制协议的多样性。
 
@@ -268,6 +292,8 @@
 
 - 为什么读 tail 能保证强一致？
 - head 挂了怎么办？
+
+**作业**：[Lab 3](lab3.html) · [Lab 4](lab4.html) · [作业总览](labs.html)
 
 ## 第 14 讲：OCC / FaRM {#lec14}
 
@@ -280,7 +306,7 @@
 - 事务的原子性和隔离性。
 - 延迟优化。
 
-**阅读**：FaRM (2015)。
+**阅读**：[FaRM (2015)](papers.html#farm)。
 
 **和 lab 的关系**：Lab 4 的 KV/事务；性能极限的另一端。
 
@@ -288,6 +314,8 @@
 
 - OCC 什么时候 abort？
 - RDMA 为什么能降低延迟？
+
+**作业**：[Lab 4](lab4.html) · [作业总览](labs.html)
 
 ## 第 15 讲：Verification {#lec15}
 
@@ -300,7 +328,7 @@
 - model checking vs. machine-checked proof。
 - 验证的代价和边界。
 
-**阅读**：IronFleet (2015)。
+**阅读**：[IronFleet (2015)](papers.html#ironfleet)。
 
 **和 lab 的关系**：Lab 3 的 Raft 安全性；提醒你测试通过 ≠ 正确。
 
@@ -308,6 +336,8 @@
 
 - 测试能发现哪些 bug，发现不了哪些？
 - refinement 证明在证什么？
+
+**作业**：[Lab 3](lab3.html) · [作业总览](labs.html)
 
 ## 第 16 讲：Memcached at Facebook {#lec16}
 
@@ -320,7 +350,7 @@
 - 多区域部署和一致性取舍。
 - 缓存和数据库的交互。
 
-**阅读**：Memcached at Facebook (2013)。
+**阅读**：[Memcached at Facebook (2013)](papers.html#memcached)。
 
 **和 lab 的关系**：Lab 2 的 lease/版本号思路。
 
@@ -328,6 +358,8 @@
 
 - 怎么避免缓存返回旧值？
 - 为什么尾延迟比平均延迟重要？
+
+**作业**：[Lab 2](lab2.html) · [作业总览](labs.html)
 
 ## 第 17 讲：AWS Lambda {#lec17}
 
@@ -340,7 +372,7 @@
 - 调度和弹性。
 - 和容器/进程隔离的对比。
 
-**阅读**：AWS Lambda (2023)。
+**阅读**：[AWS Lambda (2023)](papers.html#lambda)。
 
 **和 lab 的关系**：和 agent runtime / 进程内核的隔离、恢复问题接近。
 
@@ -348,6 +380,8 @@
 
 - 为什么用 microVM 而不是容器？
 - 怎么降低冷启动？
+
+**作业**：[INFRA 02 · CN1](cloud-native.html#lab-cn1) · [作业总览](labs.html)
 
 ## 第 18 讲：Ray {#lec18}
 
@@ -360,7 +394,7 @@
 - 调度器；数据本地性。
 - ML workload 的特点。
 
-**阅读**：Ray (2021)。
+**阅读**：[Ray (2021)](papers.html#ray)。
 
 **和 lab 的关系**：AgentRuntime 的任务调度、DAG 执行。
 
@@ -368,6 +402,8 @@
 
 - lineage 怎么恢复失败的任务？
 - task 和 actor 的区别？
+
+**作业**：[INFRA 03 · AOS1](agent-os.html#lab-aos1) · [作业总览](labs.html)
 
 ## 第 19 讲：SUNDR {#lec19}
 
@@ -380,7 +416,7 @@
 - 不能防什么：回滚、删除。
 - 和“可验证执行事实”的关系。
 
-**阅读**：SUNDR (2004)。
+**阅读**：[SUNDR (2004)](papers.html#sundr)。
 
 **和 lab 的关系**：如果你做 agent runtime 或可验证执行，“可验证的执行记录”是同一类问题。
 
@@ -388,6 +424,8 @@
 
 - fork consistency 的定义？
 - 为什么不能完全防恶意服务器？
+
+**作业**：[INFRA 03 · AOS5](agent-os.html#lab-aos5) · [作业总览](labs.html)
 
 ## 第 20 讲：Bitcoin {#lec20}
 
@@ -400,7 +438,7 @@
 - 51% 攻击；概率最终性。
 - 和 Raft/PBFT 的对比。
 
-**阅读**：Bitcoin (2008)。
+**阅读**：[Bitcoin (2008)](papers.html#bitcoin)。
 
 **和 lab 的关系**：crash fault vs. Byzantine fault。
 
@@ -408,6 +446,8 @@
 
 - 为什么 51% 是关键阈值？
 - 什么是概率最终性？
+
+**作业**：[作业总览](labs.html)
 
 ## 第 21 讲：Byzantine Fault Tolerance {#lec21}
 
@@ -420,7 +460,7 @@
 - view change。
 - 和 Raft（crash fault）的对比。
 
-**阅读**：PBFT (1999)。
+**阅读**：[PBFT (1999)](papers.html#pbft)。
 
 **和 lab 的关系**：Lab 3 的 Raft 只处理 crash fault。
 
@@ -429,6 +469,11 @@
 - 为什么需要 3f+1？
 - primary 作恶怎么办？
 
+**作业**：[作业总览](labs.html)
+
 ## 第 22 讲：Project demos {#lec22}
 
 期末项目展示。自学可以跳过；如果你想做项目，选一个和 lab 相关的小系统，写清楚问题、设计、测试和限制。
+
+**作业**：[作业总览](labs.html)
+

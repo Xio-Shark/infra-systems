@@ -16,7 +16,7 @@
 
 ## INFRA 01 · 核心阅读
 
-### MapReduce (2004)
+### [MapReduce (2004)](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) {#mapreduce}
 
 **一句话**：把大规模数据处理抽象成 `map` 和 `reduce`，让框架处理并行、分区、失败重试。
 
@@ -27,7 +27,7 @@
 
 **和 lab 的关系**：Lab 1 就是简化版 MapReduce。
 
-### GFS (2003)
+### [GFS (2003)](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) {#gfs}
 
 **一句话**：Google 的大文件系统，用 master + chunkserver + lease 支持大规模顺序读写和追加。
 
@@ -39,7 +39,7 @@
 
 **和 lab 的关系**：理解“复制 + 租约 + 失败恢复”的工程取舍；Lab 3 的 Raft 是另一条路线。
 
-### Paxos (2001) / Paxos Made Simple
+### [Paxos (2001) / Paxos Made Simple](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) {#paxos}
 
 **一句话**：最经典的共识算法；proposer 提议、acceptor 投票、learner 学习，多数派保证安全。
 
@@ -50,7 +50,7 @@
 
 **和 lab 的关系**：Raft 是“更易理解”的 Paxos 变体；对照读更容易懂 Raft。
 
-### Raft (2014)
+### [Raft (2014)](https://raft.github.io/raft.pdf) {#raft}
 
 **一句话**：用 leader election + log replication + safety 规则实现共识，强调可理解性。
 
@@ -62,7 +62,7 @@
 
 **和 lab 的关系**：Lab 3 的全部内容。中文翻译：https://github.com/maemual/raft-zh_cn
 
-### Time, Clocks, and the Ordering of Events (1978)
+### [Time, Clocks, and the Ordering of Events (1978)](https://lamport.azurewebsites.net/pubs/time-clocks.pdf) {#time-clocks}
 
 **一句话**：用逻辑时钟和偏序描述分布式系统中的“先后”，不依赖物理时钟。
 
@@ -73,7 +73,7 @@
 
 **和 lab 的关系**：Raft 的 term、lease 的 epoch、线性一致的 real-time order 都建立在“顺序”上；先理解逻辑顺序，再区分哪些地方必须用物理时间。
 
-### Linearizability (1990)
+### [Linearizability (1990)](https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf) {#linearizability}
 
 **一句话**：定义“线性一致”：每个操作看起来在某个瞬间原子生效，并尊重实时顺序。
 
@@ -84,7 +84,7 @@
 
 **和 lab 的关系**：Lab 2/4 的 KV 服务要求线性一致；测试用 porcupine 检查。
 
-### ZooKeeper (2010)
+### [ZooKeeper (2010)](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf) {#zookeeper}
 
 **一句话**：一个协调服务，提供 znode、watch、session，用 ZAB 协议做复制。
 
@@ -95,7 +95,7 @@
 
 **和 lab 的关系**：Lab 2 的锁可以用 KV 实现；ZooKeeper 是工业界的版本。
 
-### Spanner (2012)
+### [Spanner (2012)](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) {#spanner}
 
 **一句话**：全球分布式 SQL，用 TrueTime + Paxos group 实现外部一致性。
 
@@ -106,7 +106,7 @@
 
 **和 lab 的关系**：Lab 5 的分片 + 配置变更，是 Spanner 的简化版。
 
-### Chain Replication (2004)
+### [Chain Replication (2004)](https://www.semanticscholar.org/paper/Chain-Replication-for-Supporting-High-Throughput-Renesse-Schneider/9a091dacf855c1b6a0cd4361194e238fe6e1ff11) {#chain-replication}
 
 **一句话**：主备链：写从 head 到 tail，读从 tail，强一致。
 
@@ -117,7 +117,7 @@
 
 **和 lab 的关系**：理解复制协议的多样性；Lab 3 是 Raft 路线。
 
-### FaRM (2015)
+### [FaRM (2015)](https://www.microsoft.com/en-us/research/wp-content/uploads/2014/02/aleksandar-dragojevic.pdf) {#farm}
 
 **一句话**：用 RDMA + OCC + 复制做内存事务系统，追求低延迟。
 
@@ -128,7 +128,7 @@
 
 **和 lab 的关系**：Lab 4 的事务/KV 是简化版；FaRM 是性能极限的另一端。
 
-### IronFleet (2015)
+### [IronFleet (2015)](https://www.microsoft.com/en-us/research/publication/ironfleet-proving-practical-distributed-systems-correct/) {#ironfleet}
 
 **一句话**：用机器验证的方法证明分布式系统（包括 Paxos）的正确性。
 
@@ -139,7 +139,7 @@
 
 **和 lab 的关系**：提醒你 Raft 的“正确”不是靠测试堆出来的；测试只是抽样。
 
-### Memcached at Facebook (2013)
+### [Memcached at Facebook (2013)](https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf) {#memcached}
 
 **一句话**：Facebook 的大规模缓存系统，讲 lease、一致性、尾延迟。
 
@@ -150,7 +150,7 @@
 
 **和 lab 的关系**：Lab 2 的 lease/版本号思路在大规模系统里的样子。
 
-### AWS Lambda (2023)
+### [AWS Lambda (2023)](https://arxiv.org/abs/2305.13162) {#lambda}
 
 **一句话**：Serverless 平台的内部：隔离、冷启动、快照恢复、Firecracker。
 
@@ -161,7 +161,7 @@
 
 **和 lab 的关系**：如果你做 agent runtime 或进程内核，这一篇和隔离/恢复问题很接近。
 
-### Ray (2021)
+### [Ray (2021)](https://arxiv.org/abs/1712.05889) {#ray}
 
 **一句话**：分布式 Python 的 task/actor 模型，强调调度和 lineage。
 
@@ -172,7 +172,7 @@
 
 **和 lab 的关系**：和 agent 任务调度、DAG 执行相关；如果你做 agent runtime，会遇到相似的调度和恢复问题。
 
-### SUNDR (2004)
+### [SUNDR (2004)](https://www.usenix.org/legacy/event/osdi04/tech/full_papers/li_j/li_j.pdf) {#sundr}
 
 **一句话**：在不可信存储上保证 fork consistency：客户端能检测服务器是否给了不同视图。
 
@@ -183,7 +183,7 @@
 
 **和 lab 的关系**：理解“服务器可能撒谎”时的正确性模型；和 agent 执行审计里的“可验证的执行记录”是同一类问题。
 
-### Bitcoin (2008)
+### [Bitcoin (2008)](https://bitcoin.org/bitcoin.pdf) {#bitcoin}
 
 **一句话**：用 proof-of-work + 最长链实现去中心化共识，容忍节点作恶。
 
@@ -194,7 +194,7 @@
 
 **和 lab 的关系**：和 Raft 对比： crash fault tolerance vs Byzantine fault tolerance。
 
-### PBFT (1999)
+### [PBFT (1999)](https://static.usenix.org/events/osdi99/castro.html) {#pbft}
 
 **一句话**：实用拜占庭容错，3f+1 个节点容忍 f 个恶意节点。
 
@@ -205,7 +205,7 @@
 
 **和 lab 的关系**：如果你关心“节点可能作恶”，这是入口；课程的 Raft 只处理 crash。
 
-### 6.033 Chapter 9（分布式事务）
+### [6.033 Chapter 9（分布式事务）](https://ocw.mit.edu/courses/6-033-computer-system-engineering-spring-2018/) {#6033}
 
 **一句话**：2PC、原子提交、分布式事务的基础章节。
 
@@ -220,7 +220,7 @@
 
 下面这些不是 6.5840 schedule 上的必读论文，是INFRA 02/03的补充阅读。不要一次读完；每篇写 5 句话：问题、假设、机制、代价、和课程的关系。
 
-### Borg (2015)
+### [Borg (2015)](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/) {#borg}
 
 **一句话**：Google 的集群管理器，Pod、优先级、配额、抢占这些概念的前身。
 
@@ -231,7 +231,7 @@
 
 **和课程的关系**：INFRA 02的 Pod、requests/limits、QoS、eviction 都能在 Borg 里看到影子。
 
-### The Tail at Scale (2013)
+### [The Tail at Scale (2013)](https://research.google/pubs/the-tail-at-scale/) {#tail-at-scale}
 
 **一句话**：为什么大规模系统的 p99 比平均值重要，以及怎么用 hedged request、微分区降低尾延迟。
 
@@ -242,7 +242,7 @@
 
 **和课程的关系**：INFRA 02 第 13 讲的可观测性与性能；INFRA 01 MapReduce 的 straggler 也是同一个问题。
 
-### Firecracker (2020)
+### [Firecracker (2020)](https://www.usenix.org/system/files/nsdi20-paper-agache.pdf) {#firecracker}
 
 **一句话**：AWS 为 serverless 设计的 microVM，启动快、内存开销小、支持快照恢复。
 
@@ -253,7 +253,7 @@
 
 **和课程的关系**：INFRA 02 的 sandbox runtime；INFRA 03 的快照与恢复、强隔离任务进程。
 
-### The True Cost of Containing: A gVisor Case Study (2019)
+### [The True Cost of Containing: A gVisor Case Study (2019)](https://www.usenix.org/system/files/hotcloud19-paper-young.pdf) {#gvisor}
 
 **一句话**：gVisor 用用户态内核拦截 syscall，换来更强隔离，但系统调用、内存分配、文件打开都变慢。
 
@@ -268,7 +268,7 @@
 
 > Agent OS 是探索方向，这些论文和系统不代表主流共识。读的时候重点看它们各自解决了什么、没解决什么，不要把这些设计当成标准答案。
 
-### seL4 (2009)
+### [seL4 (2009)](https://www.sigops.org/s/conferences/sosp/2009/papers/klein-sosp09.pdf) {#sel4}
 
 **一句话**：形式验证的微内核；capability 是原生的权限模型，不是后加的补丁。
 
@@ -279,7 +279,7 @@
 
 **和课程的关系**：INFRA 03的 capability 模型、微内核 vs 宏内核；你不一定要用 seL4，但要知道“能力原生”的设计长什么样。
 
-### The UNIX Time-Sharing System (1974)
+### [The UNIX Time-Sharing System (1974)](https://people.eecs.berkeley.edu/~brewer/cs262/unix.pdf) {#unix}
 
 **一句话**：Unix 的经典论文；文件、进程、shell、权限模型的原点。
 
@@ -290,7 +290,7 @@
 
 **和课程的关系**：INFRA 03要从 Unix 的接口往前走一步；先理解它为什么成功，再讨论它为什么不适合 agent。
 
-### End-to-End Arguments in System Design (1984)
+### [End-to-End Arguments in System Design (1984)](https://web.mit.edu/Saltzer/www/publications/endtoend/endtoend.pdf) {#e2e}
 
 **一句话**：很多功能只有在端点实现才可靠；中间层可以优化，但不能替代端点的正确性。
 
@@ -301,7 +301,7 @@
 
 **和课程的关系**：INFRA 01的 RPC 语义、INFRA 02的 sidecar 重试、INFRA 03的审计，都要问“这个保证到底由谁负责”。
 
-### Sagas (1987)
+### [Sagas (1987)](https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf) {#sagas}
 
 **一句话**：长事务拆成一系列本地事务，每个配一个补偿操作；补偿不是回滚，可能失败。
 
@@ -312,7 +312,7 @@
 
 **和课程的关系**：INFRA 03第 6 讲的事务与补偿；多容器/多 agent 的跨服务操作。
 
-### AIOS: LLM Agent Operating System (2024)
+### [AIOS: LLM Agent Operating System (2024)](https://arxiv.org/abs/2403.16971) {#aios}
 
 **一句话**：把 LLM 当 CPU、把 agent 当进程，在用户态实现调度、上下文管理、内存和工具调用。
 
@@ -345,11 +345,11 @@
 
 ## 阅读顺序
 
-1. **MapReduce** → 做 Lab 1。
-2. **Time, Clocks, and the Ordering of Events** → 理解逻辑顺序，再进入 Raft。
-3. **Raft** → 做 Lab 3；中间穿插 **Linearizability**。
-4. **GFS / Paxos / ZooKeeper** → 理解复制和协调的多样性。
-5. **Spanner / Chain Replication / FaRM** → 看工业界怎么组合这些原语。
-6. **AWS Lambda / Ray** → 看分布式系统在 serverless / ML 场景的形态。
+1. **[MapReduce](#mapreduce)** → 做 Lab 1。
+2. **[Time, Clocks, and the Ordering of Events](#time-clocks)** → 理解逻辑顺序，再进入 Raft。
+3. **[Raft](#raft)** → 做 Lab 3；中间穿插 **[Linearizability](#linearizability)**。
+4. [GFS](#gfs) / [Paxos](#paxos) / [ZooKeeper](#zookeeper) → 理解复制和协调的多样性。
+5. [Spanner](#spanner) / [Chain Replication](#chain-replication) / [FaRM](#farm) → 看工业界怎么组合这些原语。
+6. [AWS Lambda](#lambda) / [Ray](#ray) → 看分布式系统在 serverless / ML 场景的形态。
 
 不要为了“读完”而读；每篇读完写 5 句话，比读十篇更有用。
