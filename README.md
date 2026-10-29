@@ -74,6 +74,8 @@ judge/            local grading scripts, contracts, and test configs
 template.html     Pandoc template
 build.sh          build script
 STYLE.md          writing conventions for content/
+DEPLOY.md         deployment and mainland-China access options
+Dockerfile        container build for static hosts
 dist/             generated site
 ```
 

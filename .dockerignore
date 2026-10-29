@@ -1,0 +1,6 @@
+.git
+.github
+dist
+judge
+__pycache__
+*.pyc
