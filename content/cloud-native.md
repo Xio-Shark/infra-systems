@@ -27,7 +27,9 @@
 1. 读 [第 1 讲 从进程到容器](#cn1) 和 [第 2 讲 容器运行时](#cn2)。
 2. 打开 [CN1 任务书](#lab-cn1)，先做一个隔离 shell。
 3. 准备 rootfs 和实现后，跑 `SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1`。
-4. 延伸参考（可选）：[OCI Runtime Spec](papers.html)、[cgroup v2 文档](papers.html) 和 [官方实验页](https://pdos.csail.mit.edu/6.5840/labs/lab-container.html)。讲义已经覆盖 CN1 所需的概念。
+4. 延伸参考（可选）：[OCI Runtime Spec](papers.html)、[`namespaces(7)`](https://man7.org/linux/man-pages/man7/namespaces.7.html)、[cgroup v2 文档](papers.html) 和 [runc 的 `libcontainer`](https://github.com/opencontainers/runc/tree/main/libcontainer)。讲义已经覆盖 CN1 所需的概念。
+
+CN1 是本课程原创的实验：MIT 6.5840 只有五个实验（MapReduce、KV server、Raft、RSM KV、sharded KV），没有容器实验，所以这里没有官方页可以对照，验收标准完全由本仓库的 `judge/contracts/infra02.md` 定义。
 
 作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。
 
@@ -151,7 +153,7 @@ CN1 用 `clone`/`unshare` 从零做一个容器：先建 namespace、挂 `/proc`
 2. `memory.high` 超过后限流、让进程变慢；`memory.max` 超过后触发 OOM kill。
 3. `chroot` 只改根目录，进程仍可能保留旧根的引用并逃出；`pivot_root` 换掉整个挂载树的根，要求新根是挂载点，隔离更彻底。
 
-**依据**：`namespaces(7)`、cgroup v2 文档、OCI Runtime Spec；6.5840 Lab CN1 的任务书。
+**依据**：`namespaces(7)`、`clone(2)`、`pivot_root(2)`、cgroup v2 内核文档、OCI Runtime Spec；CN1 任务书（本课程原创，非 MIT 6.5840 实验）。
 
 ## 第 2 讲：谁真正持有容器进程 {#cn2}
 

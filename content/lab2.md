@@ -41,11 +41,11 @@ ls kvsrv1           # client.go lock rpc server.go test.go kvsrv_test.go
 ```text
 === RUN   TestReliablePut
 One client and reliable Put (reliable network)...
-    kvsrv_test.go:25: Put err ErrNoKey
---- FAIL: TestReliablePut (0.31s)
+    kvsrv_test.go:24: Put err ErrNoKey
+--- FAIL: TestReliablePut (0.11s)
 ```
 
-原因是 `client.go` 里的 `Clerk.Put` 还是桩，直接返回 `rpc.ErrNoKey`。把这条错误当成起点，不要先去改测试。
+原因是 `client.go` 里的 `Clerk.Put` 还是桩，直接返回 `rpc.ErrNoKey`。把这条错误当成起点，不要先去改测试。行号（`:24`）和耗时（`0.11s`）会随 MIT 更新骨架而变，只要 `FAIL` 的原因还是 `Put err ErrNoKey` 就说明你在正确的位置。
 
 只改三个文件：`kvsrv1/client.go`、`kvsrv1/server.go`、`kvsrv1/lock/lock.go`。`kvsrv1/rpc/rpc.go` 是客户端和服务端共同的契约，`kvsrv1/test.go`、`kvsrv1/kvsrv_test.go` 和 `kvsrv1/lock/lock_test.go` 是测试，都不要改。
 

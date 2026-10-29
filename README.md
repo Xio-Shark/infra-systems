@@ -16,6 +16,14 @@ The site is generated with Pandoc from `content/*.md` and served as plain HTML. 
 ./build.sh
 ```
 
+Content is checked before it is published; the same commands run in CI:
+
+```bash
+python3 tools/check.py         # 断链、工时数字、讲义章节
+./build.sh                     # 生成 dist/
+python3 tools/verify_build.py  # 产物链接、资源版本、字体覆盖
+```
+
 Output is in `dist/`. Open `dist/index.html` or serve it locally:
 
 ```bash
@@ -81,6 +89,8 @@ content/          Markdown sources
   start.md        guide
 assets/           style.css, app.js, anim.css, anim.js
 judge/            local grading scripts, contracts, and test configs
+starters/         scaffolds for the labs that ship no skeleton (CN1)
+tools/            check.py (content) and verify_build.py (output)
 template.html     Pandoc template
 build.sh          build script
 STYLE.md          writing conventions for content/
@@ -92,7 +102,9 @@ dist/             generated site
 ## Constraints
 
 - All core labs run on one Linux or WSL2 machine: 2 vCPU, 4 GB RAM, 20 GB disk. No GPU, KVM, or multi-node cluster.
-- The site does not include lab code or answers.
+- The site does not include lab answers. `starters/` holds one scaffold (CN1) that
+  compiles but leaves the core steps as TODOs; the other labs start from an empty
+  directory by design.
 - INFRA 01 follows the MIT 6.5840 collaboration policy; its lecture notes are original Chinese summaries, not translations.
-- INFRA 02/03 are original course material; readings are linked to public papers, specs, and documentation.
+- INFRA 02/03 are original course material; readings are linked to public papers, specs, and documentation. MIT 6.5840 has five labs (MapReduce, KV server, Raft, RSM KV, sharded KV) and no container lab; the INFRA 02/03 labs are not derived from it.
 - INFRA 03 is explicitly exploratory: it proposes hypotheses and asks readers to argue for or against them, rather than presenting a standard.

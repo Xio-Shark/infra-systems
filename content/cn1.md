@@ -68,6 +68,8 @@ sudo chroot "$rootfs" /bin/sh -c 'echo rootfs-ok'   # 预期 rootfs-ok
 
 ## 代码地图
 
+仓库里有一份起步骨架 `starters/cn1/`，把命令行解析、父子进程切换和退出码透传搭好了，可以直接 `go build`，两处核心逻辑（创建 namespace 前后的准备、切根流程）留成 TODO。想自己从零写也可以，下面给出同样的职责划分。
+
 最小实现只需要一个 `main.go`。建议按职责拆成三块，调试时容易定位：
 
 - `main.go`：解析 `run --rootfs DIR [--memory 64M] -- CMD [ARG...]`，启动子进程，等待结束，透传退出码。
