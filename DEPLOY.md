@@ -26,8 +26,8 @@ Zeabur 的 `*.zeabur.app` 默认域名在国内通常能直连，免费额度对
 1. 用 GitHub 登录 https://zeabur.com。
 2. 新建项目，区域选 Asia 或 Hong Kong。
 3. 添加服务，选 Git 部署，授权并选择 `Xio-Shark/infra-systems`。
-4. 如果识别为静态站点：构建命令 `./build.sh`，输出目录 `dist`。
-5. 如果识别不了：选 Docker 部署，仓库里的 `Dockerfile` 会安装 Pandoc、构建并启动静态服务器。
+4. 仓库根目录有 `Dockerfile`，Zeabur 会自动用 Docker 部署；不需要再填构建命令。
+5. `Dockerfile` 会安装 Pandoc、执行 `./build.sh`，并用 `${PORT:-8080}` 启动静态服务器；服务端口保持 8080。
 6. 在服务详情里生成域名，例如 `infra-systems.zeabur.app`。
 7. 用手机 4G/5G 打开，确认不是只在你自己的网络里能开。
 
