@@ -1,0 +1,830 @@
+/* 动画组件：所有场景共用一套外框、控件和 SVG 语义。 */
+
+:root {
+  --anim-ok: #3f6b4f;
+  --anim-warn: #91621d;
+  --anim-info: #3f5f8a;
+  --anim-bad: #a04030;
+  --anim-pink: #8a4a6b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --anim-ok: #83b28e;
+    --anim-warn: #d5a85f;
+    --anim-info: #91add0;
+    --anim-bad: #dc9384;
+    --anim-pink: #c992ae;
+  }
+}
+
+.anim {
+  margin: 1.9rem 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.anim-head {
+  padding: 14px 16px 0;
+}
+
+.anim-kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.anim-title {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  border: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.anim-hint {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.anim-stage {
+  padding: 4px 10px 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.anim-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 560px;
+  touch-action: pan-y;
+}
+
+.anim-svg text {
+  font-family: var(--font);
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+.anim-svg .t-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.anim-svg .t-sub {
+  fill: var(--muted);
+  font-size: 10.5px;
+}
+
+.anim-svg .t-small {
+  fill: var(--muted);
+  font-size: 9.5px;
+}
+
+.anim-svg .t-badge {
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.anim-svg .t-mono {
+  font-size: 10px;
+}
+
+.anim-node rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: fill 0.35s ease, stroke 0.35s ease, opacity 0.35s ease;
+}
+
+.anim-node {
+  transition: opacity 0.35s ease;
+}
+
+.anim-node.is-leader rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+.anim-node.is-candidate rect {
+  stroke: var(--anim-warn);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 3;
+}
+
+.anim-node.is-down {
+  opacity: 0.34;
+}
+
+.anim-node.is-slow rect {
+  stroke: var(--anim-warn);
+  stroke-dasharray: 4 3;
+}
+
+.anim-node.is-focus rect {
+  stroke: var(--accent);
+  stroke-width: 1.8;
+}
+
+.anim-node.is-good rect {
+  stroke: var(--anim-ok);
+  stroke-width: 1.8;
+}
+
+.anim-node.is-bad rect {
+  stroke: var(--anim-bad);
+  stroke-width: 1.8;
+}
+
+.anim-node .t-badge.is-leader {
+  fill: var(--accent);
+}
+
+.anim-node .t-badge.is-candidate {
+  fill: var(--anim-warn);
+}
+
+.anim-node .t-badge.is-down {
+  fill: var(--anim-bad);
+}
+
+.anim-cell rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.1;
+  transition: fill 0.35s ease, stroke 0.35s ease, opacity 0.35s ease;
+}
+
+.anim-cell text {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.anim-cell.t1 rect {
+  fill: color-mix(in srgb, var(--anim-ok) 17%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-cell.t2 rect {
+  fill: color-mix(in srgb, var(--anim-warn) 19%, var(--surface));
+  stroke: var(--anim-warn);
+}
+
+.anim-cell.t3 rect {
+  fill: color-mix(in srgb, var(--anim-info) 18%, var(--surface));
+  stroke: var(--anim-info);
+}
+
+.anim-cell.t4 rect {
+  fill: color-mix(in srgb, var(--anim-bad) 16%, var(--surface));
+  stroke: var(--anim-bad);
+}
+
+.anim-cell.t5 rect {
+  fill: color-mix(in srgb, var(--anim-pink) 17%, var(--surface));
+  stroke: var(--anim-pink);
+}
+
+.anim-cell.is-committed rect {
+  stroke-width: 2.6;
+}
+
+.anim-cell.is-committed .t-check {
+  opacity: 1;
+}
+
+.anim-cell .t-check {
+  opacity: 0;
+  fill: var(--anim-ok);
+  font-size: 9px;
+  font-weight: 600;
+  transition: opacity 0.3s ease;
+}
+
+.anim-cell.is-ghost {
+  opacity: 0.28;
+}
+
+.anim-cell.is-target rect {
+  stroke-dasharray: 4 3;
+}
+
+.anim-cell.is-hot rect {
+  stroke: var(--anim-bad);
+  stroke-width: 2.2;
+}
+
+.anim-cell.is-dim {
+  opacity: 0.42;
+}
+
+.anim-bar-bg {
+  fill: var(--surface-2);
+  stroke: var(--line);
+  stroke-width: 0.8;
+}
+
+.anim-bar {
+  fill: var(--anim-ok);
+  transition: width 0.4s ease, fill 0.3s ease;
+}
+
+.anim-bar.is-hot {
+  fill: var(--anim-warn);
+}
+
+.anim-bar.is-over {
+  fill: var(--anim-bad);
+}
+
+.anim-msg-line {
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.anim-msg-label {
+  font-size: 9px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.anim-msg-dot {
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+.anim-divider {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.anim-caption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px 0;
+}
+
+.anim-step {
+  flex: none;
+  margin-top: 1px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.anim-text {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+.anim-note {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.anim-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 14px;
+}
+
+.anim-btn {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.anim-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.anim-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.anim-btn.is-primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.anim-dots {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+.anim-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.anim-dot[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.anim-fallback {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+.anim-svg .anim-pulse {
+  animation: anim-pulse 0.9s ease;
+}
+
+@keyframes anim-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.65;
+  }
+}
+
+@media (max-width: 640px) {
+  .anim-svg {
+    min-width: 600px;
+  }
+
+  .anim-hint::after {
+    content: " 手机上可左右滑动查看。";
+  }
+
+  .anim-dots {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 0;
+    justify-content: flex-end;
+  }
+
+  .anim-head {
+    padding: 12px 14px 0;
+  }
+
+  .anim-caption {
+    padding: 9px 14px 0;
+  }
+
+  .anim-controls {
+    padding: 9px 14px 12px;
+  }
+
+  .anim-text {
+    font-size: 0.82rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim *,
+  .anim *::before,
+  .anim *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media print {
+  .anim-controls,
+  .anim-dots,
+  .anim-hint {
+    display: none;
+  }
+
+  .anim {
+    break-inside: avoid;
+  }
+
+  .anim-svg {
+    min-width: 0;
+  }
+}
+
+/* 场景内的通用小部件 */
+
+.anim-task rect {
+  fill: var(--surface-2);
+  stroke: var(--line);
+  stroke-width: 1;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-task text {
+  fill: var(--muted);
+  font-size: 8.5px;
+  text-anchor: middle;
+}
+
+.anim-task.is-run rect {
+  fill: color-mix(in srgb, var(--anim-warn) 20%, var(--surface));
+  stroke: var(--anim-warn);
+}
+
+.anim-task.is-run text {
+  fill: var(--anim-warn);
+}
+
+.anim-task.is-done rect {
+  fill: color-mix(in srgb, var(--anim-ok) 18%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-task.is-done text {
+  fill: var(--anim-ok);
+}
+
+.anim-chip {
+  transition: opacity 0.3s ease;
+}
+
+.anim-chip rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.anim-chip text {
+  fill: var(--muted);
+  font-size: 8.5px;
+  text-anchor: middle;
+}
+
+.anim-chip.is-off {
+  opacity: 0.16;
+}
+
+.anim-chip.is-on rect {
+  fill: color-mix(in srgb, var(--anim-ok) 12%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-chip.is-on text {
+  fill: var(--ink);
+}
+
+.anim-chip.is-focus rect {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+
+.anim-shard {
+  transition: transform 0.55s ease, opacity 0.35s ease;
+}
+
+.anim-shard rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.1;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-shard text {
+  font-size: 10.5px;
+  text-anchor: middle;
+}
+
+.anim-shard.is-served rect {
+  fill: color-mix(in srgb, var(--anim-ok) 15%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-shard.is-frozen rect {
+  fill: color-mix(in srgb, var(--anim-warn) 18%, var(--surface));
+  stroke: var(--anim-warn);
+  stroke-dasharray: 4 3;
+}
+
+.anim-shard.is-installing rect {
+  fill: color-mix(in srgb, var(--anim-info) 18%, var(--surface));
+  stroke: var(--anim-info);
+}
+
+.anim-shard.is-target rect {
+  stroke-dasharray: 4 3;
+}
+
+.anim-shard.is-ghost {
+  opacity: 0.16;
+}
+
+.anim-shard.is-ghost rect {
+  stroke-dasharray: 3 4;
+}
+
+.anim-proc {
+  transition: transform 0.5s ease, opacity 0.35s ease;
+}
+
+.anim-proc rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.anim-proc text {
+  font-size: 10.5px;
+}
+
+.anim-proc.is-child rect {
+  fill: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  stroke: var(--accent);
+}
+
+.anim-proc.is-down {
+  opacity: 0.3;
+}
+
+.anim-banner rect {
+  fill: var(--surface-2);
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-banner.is-good rect {
+  fill: color-mix(in srgb, var(--anim-ok) 12%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-banner.is-warn rect {
+  fill: color-mix(in srgb, var(--anim-warn) 12%, var(--surface));
+  stroke: var(--anim-warn);
+}
+
+.anim-banner.is-bad rect {
+  fill: color-mix(in srgb, var(--anim-bad) 12%, var(--surface));
+  stroke: var(--anim-bad);
+}
+
+.anim-col-hi {
+  fill: color-mix(in srgb, var(--anim-warn) 14%, transparent);
+  stroke: var(--anim-warn);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  transition: opacity 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-col-hi.is-bad {
+  fill: color-mix(in srgb, var(--anim-bad) 14%, transparent);
+  stroke: var(--anim-bad);
+}
+
+.anim-col-hi.is-good {
+  fill: color-mix(in srgb, var(--anim-ok) 12%, transparent);
+  stroke: var(--anim-ok);
+}
+
+.anim-row.is-down {
+  opacity: 0.34;
+}
+
+.anim-row {
+  transition: opacity 0.35s ease;
+}
+
+.anim-op {
+  transition: transform 0.45s ease;
+}
+
+.anim-op rect {
+  fill: color-mix(in srgb, var(--accent) 11%, var(--surface));
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  transition: width 0.45s ease, fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-op text {
+  font-size: 10.5px;
+}
+
+.anim-op.is-bad rect {
+  fill: color-mix(in srgb, var(--anim-bad) 14%, var(--surface));
+  stroke: var(--anim-bad);
+}
+
+.anim-op .t-ret {
+  font-weight: 600;
+}
+
+.anim-point {
+  transition: transform 0.45s ease, opacity 0.3s ease;
+}
+
+.anim-point polygon {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+.anim-point text {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--accent);
+  text-anchor: middle;
+}
+
+.anim-badge rect {
+  fill: var(--surface-2);
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-badge text {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.anim-badge.is-good rect {
+  fill: color-mix(in srgb, var(--anim-ok) 12%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-badge.is-good text {
+  fill: var(--anim-ok);
+}
+
+.anim-badge.is-bad rect {
+  fill: color-mix(in srgb, var(--anim-bad) 12%, var(--surface));
+  stroke: var(--anim-bad);
+}
+
+.anim-badge.is-bad text {
+  fill: var(--anim-bad);
+}
+
+.anim-journal rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.anim-journal {
+  transition: opacity 0.3s ease;
+}
+
+.anim-journal.is-active rect {
+  fill: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.anim-journal.is-done rect {
+  fill: color-mix(in srgb, var(--anim-ok) 12%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-journal.is-bad rect {
+  fill: color-mix(in srgb, var(--anim-bad) 12%, var(--surface));
+  stroke: var(--anim-bad);
+}
+
+.anim-journal.is-pending {
+  opacity: 0.45;
+}
+
+.anim-fs rect {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: fill 0.3s ease, stroke 0.3s ease, opacity 0.3s ease;
+}
+
+.anim-fs text {
+  font-size: 10px;
+}
+
+.anim-fs.is-active rect {
+  fill: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  stroke: var(--accent);
+  stroke-width: 1.8;
+}
+
+.anim-fs.is-good rect {
+  fill: color-mix(in srgb, var(--anim-ok) 12%, var(--surface));
+  stroke: var(--anim-ok);
+}
+
+.anim-fs.is-ghost {
+  opacity: 0.34;
+}
+
+.anim-fs.is-ghost rect {
+  stroke-dasharray: 3 3;
+}
+
+.anim-group-box {
+  fill: color-mix(in srgb, var(--surface-2) 30%, transparent);
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.anim-panel {
+  fill: color-mix(in srgb, var(--surface-2) 24%, transparent);
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.anim-panel.is-good {
+  stroke: var(--anim-ok);
+}
+
+.anim-panel.is-bad {
+  stroke: var(--anim-bad);
+}
+
+.anim-config rect {
+  fill: var(--surface-2);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.anim-config text {
+  font-size: 10px;
+}
+
+.anim-ns-pill rect {
+  fill: color-mix(in srgb, var(--anim-info) 12%, var(--surface));
+  stroke: var(--anim-info);
+  stroke-width: 1;
+}
+
+.anim-ns-pill text {
+  font-size: 8px;
+  fill: var(--anim-info);
+  text-anchor: middle;
+}
+
+.anim-static-arrow {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.anim-branch rect {
+  fill: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.anim-branch text {
+  fill: var(--muted);
+  font-size: 9.5px;
+}
+
+.anim-proc-box {
+  fill: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+
+.anim-node.is-prepared rect {
+  fill: color-mix(in srgb, var(--anim-warn) 8%, var(--surface));
+  stroke: var(--anim-warn);
+  stroke-width: 1.6;
+}

@@ -92,6 +92,12 @@ intent ──stage──> prepared ──switch──> committed
 
 看两件事：提交点是 `current` 的 `rename`，不是 `committed` 记录；崩溃后从最后一条 journal 记录决定往前还是往后走。
 
+把六个步骤和两个崩溃点连起来看：
+
+<div class="anim" data-anim="workspace-tx">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 状态机落到文件，每一行都要能重放：
 
 ```go

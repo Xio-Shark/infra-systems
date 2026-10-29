@@ -9,6 +9,9 @@
 <meta name="description" content="Infra Systems：分布式系统、云原生与多容器、Agent OS 三门课。Agent OS 为探索性内容，不代表主流共识。核心实验在单机 Linux/WSL2 上完成。">
 <title>$title$ · Infra Systems</title>
 <link rel="stylesheet" href="assets/style.css?v=$asset_ver$">
+$if(anim)$
+<link rel="stylesheet" href="assets/anim.css?v=$asset_ver$">
+$endif$
 </head>
 <body>
 
@@ -50,6 +53,9 @@ $body$
   <p>最后更新：2026-10-29</p>
 </footer>
 
+$if(anim)$
+<script src="assets/anim.js?v=$asset_ver$"></script>
+$endif$
 <script src="assets/app.js?v=$asset_ver$"></script>
 </body>
 </html>

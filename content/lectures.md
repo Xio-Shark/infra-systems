@@ -56,6 +56,12 @@ worker 不互相通信，只和 coordinator 说话。这个结构让 coordinator
 
 分区是这一步的关键。如果每个 map 把输出发给所有 reduce，reduce 会被大量重复数据淹没；先按 key 分区，每个 reduce 只处理自己那一份，网络和内存都省下来。代价是 reduce 必须等所有 map 都写完对应分区，不能边 map 边 reduce。
 
+下面这个动画把正常路径走一遍；注意 W2 超时后，reduce 并没有提前开始。
+
+<div class="anim" data-anim="mapreduce">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 ### 失败了怎么办
 
 MapReduce 的失败处理只有一条主线：**任务在期限内没完成，就当成没做，重新发给另一个 worker**。
@@ -556,6 +562,12 @@ S2 (candidate)                S1, S3 (follower)
 
 这张图只画了一次拉票。真实的实现里，S2 会并行发给所有 peer，收到多数票就立刻转成 leader，不等最慢的那个回复。
 
+把这段拉票过程连起来看：
+
+<div class="anim" data-anim="raft-election">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 ### 日志复制：一次 AppendEntries 的往返
 
 假设 S2 已经是 leader，客户端发来命令 `x = 1`。
@@ -624,6 +636,12 @@ S1 是任期（term）4 的领导者（leader）。它把 `x = 1` 写到下标�
 看什么：盯住下标 2 的任期和每一列的多数派；能不能提交取决于当前任期，而不是副本数。
 
 在 (c) 里，下标 2 的旧条目已在多数派，但 S1 不能提交它；S5 在 (d) 里仍能靠 S2、S3、S4 当选并覆盖它。只有 (e) 先让任期 4 的条目上多数派，旧条目才随之间接提交；此时 S5 日志比多数派旧，选举限制（election restriction）让它拿不到票。
+
+下面用 Figure 8 的五个状态走一遍；每换一步，先看 index 2 的 term，以及哪几个 server 有它。
+
+<div class="anim" data-anim="raft-commit">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
 
 ### 持久化：先落盘，再回复
 
@@ -714,6 +732,12 @@ C3 Get                       |=========| -> 1
 C1 在 0 到 10 之间执行，C2 在 2 到 6 之间执行，两者重叠。把 C2 的线性化点放在 3、C1 放在 5，C2 返回 0、C3 在 13 读返回 1，这是一个合法顺序。也可以把 C1 放在 3、C2 放在 5，C2 返回 1；两种都线性一致，因为并发操作可以任意排序。C3 在 12 才开始，晚于 C1 的返回 10，实时序要求 C1 排在 C3 前，所以 C3 必须返回 1。
 
 把 C2 的开始时间改成 12，它仍然返回 0，这个历史就不线性一致：C1 已经完成，C2 在它之后开始，实时序要求 C2 看到 1，没有任何线性化点能同时满足这两条。另一种坏历史是 C2 先读到 1，C3 在 C2 返回后读到 0，期间没有写 0；值回退了，同样找不到合法顺序。
+
+把上面两个历史放进同一条时间轴：
+
+<div class="anim" data-anim="linearizability">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
 
 ### 可组合，所以能按对象检查
 
@@ -964,6 +988,12 @@ coordinator 的日志是恢复的核心。只要它在发 commit 之前把决定
 三个 participant A、B、C，coordinator 已经决定 commit 并写进日志，然后依次发 commit。A 收到并提交；发到 B 时 coordinator 崩溃，C 还没收到。A 的状态是已提交，B、C 停在 prepared 状态。恢复后 coordinator 重发 commit，B、C 才跟上；在此之前，它们锁住的行不能被别的事务修改。
 
 这里只给定性结论。2PC 的可用性取决于 coordinator 的恢复速度；participant 越多，阻塞期间被锁住的资源越多，但协议轮数不变。
+
+把 prepare 到 commit 的崩溃点走一遍：
+
+<div class="anim" data-anim="two-phase-commit">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
 
 ### 失败模式和边界
 

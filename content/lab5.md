@@ -169,6 +169,12 @@ type DeleteShardReply struct { Err rpc.Err }
 
 三个 RPC 都要像 `Put`/`Get` 一样走 `rsm.Submit`，不能直接改本地 map，这样它们和客户端读写有同一个日志顺序。每个 group 为每个 shard 记住见过的最大 `Num`；`args.Num` 小于它拒绝，等于且做过就幂等处理。
 
+下面这个动画把一次迁移的顺序走一遍；重点看 `Num` 在 freeze、install、publish 三个阶段怎么变。
+
+<div class="anim" data-anim="shard-migration">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 `shardgrp.KVServer` 和 Clerk：
 
 ```go

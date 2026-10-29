@@ -8,7 +8,7 @@ A static course site for three courses:
 - **INFRA 02 · Cloud-Native Systems** — 14 lectures, 5 Linux labs on containers, images, networking, and multi-container systems.
 - **INFRA 03 · Agent OS** — 12 lectures, 5 labs and a capstone on kernel-level atomic operations for agents. This is exploratory material, not a mainstream consensus.
 
-The site is generated with Pandoc from `content/*.md` and served as plain HTML. It has no backend and no build-time JavaScript framework.
+The site is generated with Pandoc from `content/*.md` and served as plain HTML. It has no backend and no build-time JavaScript framework. A handful of mechanism animations are plain SVG/DOM, loaded from `assets/anim.js`.
 
 ## Build
 
@@ -21,6 +21,16 @@ Output is in `dist/`. Open `dist/index.html` or serve it locally:
 ```bash
 python3 -m http.server 8000 -d dist
 ```
+
+## Animations
+
+Hard mechanisms have step-through animations: MapReduce, Raft election, Raft Figure 8, linearizability, 2PC, shard migration, container namespaces, and workspace transactions. They are ordinary `<div class="anim" data-anim="...">` placeholders in the Markdown; `assets/anim.js` renders the scene and controls.
+
+- No external library, no network requests, no autoplay.
+- `prefers-reduced-motion` removes transitions but keeps step navigation.
+- Without JavaScript the fallback paragraph remains; the surrounding text is still complete.
+
+To add a scene, register it in `assets/anim.js` under `InfraAnim.SPECS` and put the placeholder in the page. `build.sh` includes `anim.css` and `anim.js` in the asset hash.
 
 ## Local judge
 
@@ -69,7 +79,7 @@ content/          Markdown sources
   glossary.md     glossary
   setup.md        Linux/WSL2 environment
   start.md        guide
-assets/           style.css, app.js
+assets/           style.css, app.js, anim.css, anim.js
 judge/            local grading scripts, contracts, and test configs
 template.html     Pandoc template
 build.sh          build script

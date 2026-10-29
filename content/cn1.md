@@ -106,6 +106,12 @@ cn1（宿主 PID N）
 
 看什么：`clone` 在父进程，`/proc` 和 `pivot_root` 在子进程，cgroup 的写入在父进程，而且必须赶在子进程退出之前。
 
+把宿主视角和容器内视角并排看：
+
+<div class="anim" data-anim="namespace-isolation">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 关键调用只有五个：
 
 ```go
