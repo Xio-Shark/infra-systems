@@ -2,13 +2,13 @@
 
 当前线上是 GitHub Pages：`https://xio-shark.github.io/infra-systems/`。站点本身是纯静态的，问题不在代码，而在国内到 GitHub Pages 的链路时好时坏。
 
-这份文档给的是“不依赖 VPN”的备选方案。结论先说：**没有备案域名时，Zeabur 和帽子云最值得先试；有域名时，Cloudflare Pages 可以试；EdgeOne Makers 的默认域名在国内容易只给 3 小时预览，不适合直接分享。**
+这份文档给的是“不依赖 VPN”的备选方案。结论先说：**没有备案域名时，帽子云最值得先试；有域名时，Cloudflare Pages 可以试。Zeabur 已宣布 2026/12/31 停止运营，新项目不要再迁。** EdgeOne Makers 的默认域名在国内容易只给 3 小时预览，不适合直接分享。
 
 ## 方案对比
 
 | 方案 | 国内直连 | 需要备案 | 成本 | 适合 |
 |---|---|---|---|---|
-| **Zeabur** `*.zeabur.app` | 通常可直连，个别地区仍可能慢 | 不需要 | 免费额度，够小站 | 先试这个 |
+| **Zeabur** `*.zeabur.app` | 2026/12/31 停止运营 | — | — | 不要新迁 |
 | **帽子云** `*.maoziyun.com` | 国内优化 CDN，通常较快 | 不需要 | 免费 | 纯静态、国内读者 |
 | **Cloudflare Pages + 自有域名** | 时好时坏，绑域名后通常好一些 | 不需要（海外节点） | 域名费用 | 已有域名 |
 | **EdgeOne Makers（原 Pages）** | 默认域名仅 3 小时预览；自定义域名 + 大陆加速需备案 | 大陆加速需要 | 免费额度 | 有备案域名 |
@@ -19,9 +19,11 @@
 
 这张表是 2026 年 10 月的公开资料和实测讨论汇总；国内不同省份、运营商差异很大，部署完一定要用手机流量、多个网络各测一次。
 
-## 方案一：Zeabur（先试）
+## 方案一：Zeabur（已宣布停止运营）
 
-Zeabur 的 `*.zeabur.app` 默认域名在国内通常能直连，免费额度对小站够用，支持 GitHub 部署。
+> Zeabur 官方公告：2026/12/31 停止运营，部分服务 12/1 起陆续停止。新项目不要再用；已经部署的尽快迁到帽子云或 Cloudflare Pages。
+
+Zeabur 的 `*.zeabur.app` 默认域名在国内通常能直连，免费额度对小站够用，支持 GitHub 部署。下面步骤只用于理解历史配置或迁移，不再作为推荐方案。
 
 1. 用 GitHub 登录 https://zeabur.com。
 2. 新建项目，区域选 Asia 或 Hong Kong。
@@ -33,7 +35,7 @@ Zeabur 的 `*.zeabur.app` 默认域名在国内通常能直连，免费额度对
 
 注意：Zeabur 免费额度是每月 5 美元左右的资源额度，静态站通常够用；额度政策以后可能调整。
 
-## 方案二：帽子云
+## 方案二：帽子云（当前首选）
 
 帽子云是国产静态托管，默认域名 `*.maoziyun.com`，有面向大陆优化的 CDN，支持 GitHub 部署，当前免费。
 
@@ -42,7 +44,7 @@ Zeabur 的 `*.zeabur.app` 默认域名在国内通常能直连，免费额度对
 3. 构建命令 `./build.sh`，输出目录 `dist`；如果构建环境没有 Pandoc，直接上传本地 `dist/`。
 4. 部署完成后用默认域名访问，手机流量再测一次。
 
-它是个人项目，长期稳定性不如大厂；如果课程要长期公开，建议同时保留 GitHub Pages 和 Zeabur/帽子云中的一个。
+它是个人项目，长期稳定性不如大厂；如果课程要长期公开，建议同时保留 GitHub Pages 和帽子云中的一个。
 
 ## 方案三：Cloudflare Pages + 自有域名
 
@@ -71,7 +73,7 @@ Cloudflare Pages 的 `*.pages.dev` 在国内经常打不开；绑定自己的域
 
 ## 仓库里的部署文件
 
-- `Dockerfile`：Alpine + Pandoc + Python 静态服务器；适合 Zeabur、Render、Fly 等支持 Docker 的平台。
+- `Dockerfile`：Alpine + Pandoc + Python 静态服务器；适合 Render、Fly 等支持 Docker 的平台。
 - `netlify.toml`：Netlify 的构建命令和发布目录。
 - `vercel.json`：Vercel 的构建命令和输出目录；Vercel 构建镜像通常没有 Pandoc，建议直接上传 `dist/`，不要依赖这个配置。
 
