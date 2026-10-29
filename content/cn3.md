@@ -232,6 +232,12 @@ done
 
 预期输出交替出现 `A` 和 `B`，`conntrack -L -p tcp --dport 80` 能看到两条不同的 DNAT 目标。通过标志：至少各命中两次；同一个 TCP 连接内的多个请求只走一个后端。DNAT 只在连接的第一个包上做，后续包由 conntrack 直接映射。
 
+把一条 VIP 连接和第二次轮询走一遍：
+
+<div class="anim" data-anim="service-vip">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 ### 阶段 5：hairpin 和可选策略
 
 目标：让 Pod 访问 VIP 时，返回包也能经过宿主。只做 DNAT 时，`pod-a` 访问 VIP 可能超时。原因是后端和客户端在同一个 bridge 上，后端的回复直接按二层发给客户端，源地址是后端 IP，不是 VIP；客户端 socket 连的是 VIP，会把回复丢掉。

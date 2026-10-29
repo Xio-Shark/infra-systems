@@ -24,7 +24,7 @@ python3 -m http.server 8000 -d dist
 
 ## Animations
 
-Hard mechanisms have step-through animations: MapReduce, Raft election, Raft Figure 8, linearizability, 2PC, shard migration, container namespaces, and workspace transactions. They are ordinary `<div class="anim" data-anim="...">` placeholders in the Markdown; `assets/anim.js` renders the scene and controls.
+Hard mechanisms have step-through animations: MapReduce, RPC retries, GFS writes, Paxos, Raft election, log replication, Figure 8, snapshots, linearizability, 2PC, shard migration, container namespaces, Service VIPs, workspace transactions, and leases/fencing. They are ordinary `<div class="anim" data-anim="...">` placeholders in the Markdown; `assets/anim.js` renders the scene and controls.
 
 - No external library, no network requests, no autoplay.
 - `prefers-reduced-motion` removes transitions but keeps step navigation.

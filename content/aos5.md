@@ -113,6 +113,12 @@ A(epoch=1)   lease service      storage(max_epoch)      B
 
 看图时只盯一列：`storage.max_epoch`。租约服务说“过期了”不算数，A 自己说“我还没过期”也不算数；只有存储端比较 token 并拒绝，旧 owner 才真的写不进去。
 
+把 A/B 双主场景走一遍：
+
+<div class="anim" data-anim="aos-lease">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 审计记录建议用下面的字段，顺序固定：
 
 ```text

@@ -65,7 +65,7 @@
     var name = textEl(g, 12, 23, "", "t-name");
     var badge = textEl(g, w - 12, 23, "", "t-badge", "end");
     var sub = textEl(g, 12, 44, "", "t-sub");
-    var sub2 = textEl(g, 12, 62, "", "t-sub");
+    var sub2 = textEl(g, 12, 54, "", "t-sub");
     return {
       g: g,
       rect: rect,
@@ -389,7 +389,7 @@
     var refs = spec.build(sceneLayer, api, svgRoot) || {};
 
     function duration(i) {
-      return steps[i].duration || 3800;
+      return steps[i].duration || 2400;
     }
 
     function update() {
@@ -2424,6 +2424,1432 @@
 
       if (i === 4) api.pulse(refs.current.g);
       if (i === 5) api.pulse(refs.j.committed.g);
+    }
+  };
+})();
+
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+  var card = A.card;
+
+  function rpcCard(layer, x, y, w, name) {
+    var c = card(layer, x, y, w, 110);
+    c.name.textContent = name;
+    c.sub.setAttribute("y", "44");
+    c.sub2.setAttribute("y", "62");
+    c.line3 = textEl(c.g, 12, 82, "", "t-sub");
+    c.line4 = textEl(c.g, 12, 100, "", "t-sub");
+    return c;
+  }
+
+  function paint(c, d) {
+    c.badge.textContent = d.badge;
+    c.sub.textContent = d.l1;
+    c.sub2.textContent = d.l2;
+    c.line3.textContent = d.l3;
+    c.line4.textContent = d.l4;
+    c.g.setAttribute("class", "anim-node " + (d.state || ""));
+  }
+
+  var STEPS = [
+    {
+      caption:
+        "客户端发 Put(x, 10, 0)；服务端当前版本是 0，这次调用还没有执行。",
+      note: "第三个参数是期望版本；条件写只在版本匹配时更新。",
+      client: {
+        badge: "call 1",
+        l1: "状态：发送",
+        l2: "Put(x, 10, 0)",
+        l3: "期望版本：0",
+        l4: "结果：—",
+        state: "is-focus"
+      },
+      server: {
+        badge: "v0",
+        l1: "value：—",
+        l2: "version：0",
+        l3: "reply：—",
+        l4: "重复写：否",
+        state: ""
+      },
+      banner: ["第一次调用：版本 0 匹配", "服务端写入 10，版本变 1，准备回复"],
+      tone: ""
+    },
+    {
+      caption:
+        "服务端检查版本 0 匹配，写入 10，版本变成 1，回复 ok。",
+      note: "真正的副作用发生在服务端；客户端只看到“回复还没到”。",
+      client: {
+        badge: "call 1",
+        l1: "状态：等待回复",
+        l2: "Put(x, 10, 0)",
+        l3: "期望版本：0",
+        l4: "结果：—",
+        state: ""
+      },
+      server: {
+        badge: "v1",
+        l1: "value：10",
+        l2: "version：1",
+        l3: "reply：ok",
+        l4: "重复写：否",
+        state: "is-good"
+      },
+      banner: ["服务端已执行", "value=10，version=1；回复正在路上"],
+      tone: "good"
+    },
+    {
+      caption:
+        "回复在网络上丢失；客户端超时，只知道“没有收到回复”。",
+      note: "没有回复不等于没有执行；这正是 ErrMaybe 存在的原因。",
+      client: {
+        badge: "timeout",
+        l1: "状态：超时",
+        l2: "Put(x, 10, 0)",
+        l3: "期望版本：0",
+        l4: "结果：—",
+        state: "is-slow"
+      },
+      server: {
+        badge: "v1",
+        l1: "value：10",
+        l2: "version：1",
+        l3: "reply：ok（已丢）",
+        l4: "重复写：否",
+        state: ""
+      },
+      banner: ["回复丢失，客户端超时", "客户端不知道服务端有没有执行这次调用"],
+      tone: "bad"
+    },
+    {
+      caption:
+        "客户端用同一组参数重发 Put(x, 10, 0)，仍然带期望版本 0。",
+      note: "客户端不能换一个新版本重试，否则会覆盖别人已经写入的值。",
+      client: {
+        badge: "retry",
+        l1: "状态：重发",
+        l2: "Put(x, 10, 0)",
+        l3: "期望版本：0",
+        l4: "结果：—",
+        state: "is-focus"
+      },
+      server: {
+        badge: "v1",
+        l1: "value：10",
+        l2: "version：1",
+        l3: "reply：—",
+        l4: "重复写：否",
+        state: ""
+      },
+      banner: ["超时重发同一组参数", "仍然带期望版本 0，而不是新的版本 1"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "服务端发现期望版本 0 不等于当前版本 1，返回 ErrVersion，第二次写入不会发生。",
+      note: "首次调用就收到 ErrVersion 时可以确定没执行；这里是重发后的 ErrVersion，不能确定。",
+      client: {
+        badge: "retry",
+        l1: "状态：收到错误",
+        l2: "Put(x, 10, 0)",
+        l3: "期望版本：0",
+        l4: "结果：ErrVersion",
+        state: "is-slow"
+      },
+      server: {
+        badge: "v1",
+        l1: "value：10",
+        l2: "version：1",
+        l3: "reply：ErrVersion",
+        l4: "重复写：否",
+        state: "is-good"
+      },
+      banner: ["版本不匹配，返回 ErrVersion", "服务端当前版本 1；第二次写入不会发生"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "客户端无法判断第一次是否执行，返回 ErrMaybe；调用者必须 Get(x) 确认。",
+      note: "读到 10，说明第一次已经执行；读到 —，说明第一次没执行，可以安全重试。",
+      client: {
+        badge: "ErrMaybe",
+        l1: "状态：结果不确定",
+        l2: "ErrMaybe",
+        l3: "后续：Get(x)",
+        l4: "读到：10",
+        state: "is-slow"
+      },
+      server: {
+        badge: "v1",
+        l1: "value：10",
+        l2: "version：1",
+        l3: "reply：10",
+        l4: "重复写：否",
+        state: "is-good"
+      },
+      banner: ["客户端返回 ErrMaybe", "调用者必须 Get 确认；读到 10 说明第一次已执行"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "规则：条件写让重复请求自然失效；有外部副作用时，仍需请求 ID 加持久化去重表。",
+      note: "Lab 2 的 Put/Get 用版本号；`ErrMaybe` 是给调用者的信号，不是服务端保存的状态。",
+      client: {
+        badge: "done",
+        l1: "状态：已确认",
+        l2: "Get(x) = 10",
+        l3: "结论：第一次已执行",
+        l4: "不再重试",
+        state: ""
+      },
+      server: {
+        badge: "v1",
+        l1: "value：10",
+        l2: "version：1",
+        l3: "reply：—",
+        l4: "重复写：否",
+        state: ""
+      },
+      banner: ["条件写让重复请求失效", "外部副作用仍要请求 ID + 持久化去重表"],
+      tone: "good"
+    }
+  ];
+
+  A.SPECS["rpc-retry"] = {
+    title: "RPC 重试与版本号：ErrVersion 和 ErrMaybe",
+    width: 760,
+    height: 340,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+      refs.client = rpcCard(layer, 40, 110, 170, "client A");
+      refs.server = rpcCard(layer, 500, 110, 220, "server");
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 16, width: 680, height: 58, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 43, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 64, "", "t-sub", "middle");
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      paint(refs.client, st.client);
+      paint(refs.server, st.server);
+      refs.banner.setAttribute(
+        "class",
+        "anim-banner" + (st.tone ? " is-" + st.tone : "")
+      );
+      refs.line1.textContent = st.banner[0];
+      refs.line2.textContent = st.banner[1];
+
+      if (i === 0) {
+        api.msg({ from: [210, 150], to: [500, 150], label: "Put(x,10,0)", color: "accent", curve: -10 });
+      }
+      if (i === 1) {
+        api.msg({ from: [500, 180], to: [210, 180], label: "ok", color: "ok", curve: -10 });
+      }
+      if (i === 2) {
+        api.msg({ from: [500, 180], to: [300, 180], label: "回复丢失", color: "bad", curve: 12, dashed: true });
+      }
+      if (i === 3) {
+        api.msg({ from: [210, 160], to: [500, 160], label: "重发同参数", color: "warn", curve: 14, dashed: true });
+      }
+      if (i === 4) {
+        api.msg({ from: [500, 180], to: [210, 180], label: "ErrVersion", color: "warn", curve: -12 });
+      }
+      if (i === 5) {
+        api.msg({ from: [210, 138], to: [500, 138], label: "Get(x)", color: "accent", curve: -8 });
+        api.msg({ from: [500, 162], to: [210, 162], label: "10", color: "ok", curve: -8, delay: 200 });
+      }
+      if (i === 6) {
+        api.pulse(refs.client.g);
+      }
+    }
+  };
+})();
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+  var card = A.card;
+
+  function gfsCard(layer, x, y, w, h, name) {
+    var c = card(layer, x, y, w, h);
+    c.name.textContent = name;
+    return c;
+  }
+
+  function paint(c, d) {
+    c.badge.textContent = d.badge;
+    c.sub.textContent = d.l1;
+    c.sub2.textContent = d.l2;
+    c.g.setAttribute("class", "anim-node " + (d.state || ""));
+  }
+
+  var STEPS = [
+    {
+      caption:
+        "客户端问 master：这个偏移量属于哪个 chunk，谁持有租约，副本在哪。",
+      note: "数据不经过 master；它只返回元数据和副本位置。",
+      client: { badge: "ask", l1: "offset 0", l2: "chunk ?", state: "is-focus" },
+      master: { badge: "?", l1: "lease：?", l2: "副本：?", state: "" },
+      primary: { badge: "P", l1: "data：—", l2: "serial：—", state: "" },
+      a: { badge: "A", l1: "data：—", l2: "ack：—", state: "" },
+      b: { badge: "B", l1: "data：—", l2: "ack：—", state: "" },
+      banner: ["客户端先问 master", "chunk 句柄 + 当前 primary + 副本列表"],
+      tone: ""
+    },
+    {
+      caption:
+        "master 返回 primary 和 secondary 列表；客户端缓存这份位置信息。",
+      note: "租约让 master 在一段时间内只认一个 primary，避免脑裂。",
+      client: { badge: "ask", l1: "offset 0", l2: "chunk + 位置", state: "" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "is-good" },
+      primary: { badge: "P", l1: "data：—", l2: "serial：—", state: "is-focus" },
+      a: { badge: "A", l1: "data：—", l2: "ack：—", state: "" },
+      b: { badge: "B", l1: "data：—", l2: "ack：—", state: "" },
+      banner: ["master 选 primary", "租约期内只有 P 能决定写入顺序"],
+      tone: "good"
+    },
+    {
+      caption:
+        "客户端沿链把数据推给所有副本；副本先放进缓存，不急着写盘。",
+      note: "数据流和控制流分开：数据先到，写请求后到。",
+      client: { badge: "data", l1: "推数据", l2: "1 MB", state: "is-focus" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "" },
+      primary: { badge: "P", l1: "data：缓存", l2: "serial：—", state: "is-focus" },
+      a: { badge: "A", l1: "data：缓存", l2: "ack：—", state: "is-focus" },
+      b: { badge: "B", l1: "data：缓存", l2: "ack：—", state: "is-focus" },
+      banner: ["数据先沿链推送", "副本先放缓存；此时还没有分配写入顺序"],
+      tone: ""
+    },
+    {
+      caption:
+        "数据全部到达后，客户端才向 primary 发写请求。",
+      note: "写请求不带大块数据；primary 只负责排序和转发控制消息。",
+      client: { badge: "write", l1: "写请求", l2: "offset 0", state: "is-focus" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "" },
+      primary: { badge: "P", l1: "data：缓存", l2: "收到写请求", state: "is-focus" },
+      a: { badge: "A", l1: "data：缓存", l2: "ack：—", state: "" },
+      b: { badge: "B", l1: "data：缓存", l2: "ack：—", state: "" },
+      banner: ["客户端发写请求", "控制流：client → primary；数据已经在副本缓存里"],
+      tone: ""
+    },
+    {
+      caption:
+        "primary 给这次写分配连续序号，先写本地，再按同一序号转发给 secondary。",
+      note: "序号决定副本应用写的顺序；所有副本必须按同一个顺序执行。",
+      client: { badge: "write", l1: "等待", l2: "offset 0", state: "" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "" },
+      primary: { badge: "P", l1: "data：ab", l2: "serial：1", state: "is-good" },
+      a: { badge: "A", l1: "data：缓存", l2: "serial：1", state: "is-focus" },
+      b: { badge: "B", l1: "data：缓存", l2: "serial：1", state: "is-focus" },
+      banner: ["primary 分配序号 1", "本地先写，再转发给 A、B"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "secondary 按序号应用写并回复 primary；全部确认后，primary 回复客户端成功。",
+      note: "成功是 primary 的判断；某个 secondary 没确认时，区域可能不一致。",
+      client: { badge: "ok", l1: "成功", l2: "offset 0", state: "is-good" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "" },
+      primary: { badge: "P", l1: "data：ab", l2: "serial：1", state: "is-good" },
+      a: { badge: "A", l1: "data：ab", l2: "ack：ok", state: "is-good" },
+      b: { badge: "B", l1: "data：ab", l2: "ack：ok", state: "is-good" },
+      banner: ["所有副本确认", "primary 回复客户端；这次写在三个副本上一致"],
+      tone: "good"
+    },
+    {
+      caption:
+        "如果 B 没确认，primary 回复错误；A 有新数据、B 没有，这块区域就是不一致。",
+      note: "GFS 不保证失败写是原子的；客户端重试成功后才可能回到一致状态。",
+      client: { badge: "error", l1: "失败", l2: "offset 0", state: "is-slow" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "" },
+      primary: { badge: "P", l1: "data：ab", l2: "B 超时", state: "is-slow" },
+      a: { badge: "A", l1: "data：ab", l2: "ack：ok", state: "is-good" },
+      b: { badge: "B", l1: "data：—", l2: "ack：超时", state: "is-slow" },
+      banner: ["失败写可能只到一部分副本", "A 有 ab，B 没有；不同客户端会读到不同内容"],
+      tone: "bad"
+    },
+    {
+      caption:
+        "规则：数据先于控制，primary 只排序；租约保证同一时刻只有一个 primary。",
+      note: "GFS 的一致性比线性一致弱；失败区域要靠客户端重试和校验和修复。",
+      client: { badge: "retry", l1: "重试", l2: "offset 0", state: "" },
+      master: { badge: "lease", l1: "primary：P", l2: "副本：A、B", state: "" },
+      primary: { badge: "P", l1: "data：ab", l2: "serial：1", state: "" },
+      a: { badge: "A", l1: "data：ab", l2: "ack：ok", state: "is-good" },
+      b: { badge: "B", l1: "data：—", l2: "ack：超时", state: "is-slow" },
+      banner: ["数据流与控制流分开", "租约防脑裂；失败区域靠重试和校验和修复"],
+      tone: "warn"
+    }
+  ];
+
+  A.SPECS["gfs-write"] = {
+    title: "GFS 写路径：租约、数据推送和副本确认",
+    width: 760,
+    height: 380,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+      refs.client = gfsCard(layer, 30, 160, 150, 80, "client");
+      refs.master = gfsCard(layer, 300, 80, 160, 64, "master");
+      refs.primary = gfsCard(layer, 300, 160, 150, 80, "primary P");
+      refs.a = gfsCard(layer, 560, 100, 160, 64, "secondary A");
+      refs.b = gfsCard(layer, 560, 240, 160, 64, "secondary B");
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 12, width: 680, height: 54, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 37, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 57, "", "t-sub", "middle");
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      paint(refs.client, st.client);
+      paint(refs.master, st.master);
+      paint(refs.primary, st.primary);
+      paint(refs.a, st.a);
+      paint(refs.b, st.b);
+      refs.banner.setAttribute(
+        "class",
+        "anim-banner" + (st.tone ? " is-" + st.tone : "")
+      );
+      refs.line1.textContent = st.banner[0];
+      refs.line2.textContent = st.banner[1];
+
+      if (i === 0) {
+        api.msg({ from: [180, 180], to: [300, 120], label: "chunk / lease?", color: "accent", curve: -18 });
+      }
+      if (i === 1) {
+        api.msg({ from: [300, 144], to: [180, 190], label: "P + A,B", color: "ok", curve: 18 });
+      }
+      if (i === 2) {
+        api.token({ from: [180, 200], to: [300, 200], label: "data", color: "info" });
+        api.token({ from: [450, 200], to: [560, 132], label: "data", color: "info", delay: 120 });
+        api.token({ from: [640, 164], to: [640, 240], label: "data", color: "info", delay: 260 });
+      }
+      if (i === 3) {
+        api.msg({ from: [180, 220], to: [300, 220], label: "write", color: "accent", curve: 8 });
+      }
+      if (i === 4) {
+        api.msg({ from: [450, 180], to: [560, 120], label: "serial 1", color: "warn", curve: -16 });
+        api.msg({ from: [450, 220], to: [560, 260], label: "serial 1", color: "warn", curve: 16, delay: 100 });
+      }
+      if (i === 5) {
+        api.msg({ from: [560, 132], to: [450, 190], label: "ack", color: "ok", curve: 14 });
+        api.msg({ from: [560, 272], to: [450, 210], label: "ack", color: "ok", curve: -14, delay: 100 });
+        api.msg({ from: [300, 180], to: [180, 200], label: "ok", color: "ok", curve: 12, delay: 240 });
+      }
+      if (i === 6) {
+        api.msg({ from: [560, 272], to: [450, 220], label: "timeout", color: "bad", curve: -14, dashed: true });
+        api.msg({ from: [300, 180], to: [180, 200], label: "error", color: "bad", curve: 12, delay: 180 });
+      }
+    }
+  };
+})();
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+  var card = A.card;
+
+  function paxCard(layer, x, y, w, h, name) {
+    var c = card(layer, x, y, w, h);
+    c.name.textContent = name;
+    return c;
+  }
+
+  function paint(c, d) {
+    c.badge.textContent = d.badge;
+    c.sub.textContent = d.l1;
+    c.sub2.textContent = d.l2;
+    c.g.setAttribute("class", "anim-node " + (d.state || ""));
+  }
+
+  var STEPS = [
+    {
+      caption:
+        "P1 选提案编号 5，向 A1、A2 发 prepare；A3 当前挂着。",
+      note: "提案编号要全局唯一，并且比提议者见过的都大。",
+      p1: { badge: "n=5", l1: "phase：prepare", l2: "value：X", state: "is-focus" },
+      p2: { badge: "idle", l1: "phase：—", l2: "value：Y", state: "" },
+      a1: { badge: "A1", l1: "n_p：0", l2: "n_a/v_a：—", state: "" },
+      a2: { badge: "A2", l1: "n_p：0", l2: "n_a/v_a：—", state: "" },
+      a3: { badge: "A3", l1: "n_p：0", l2: "n_a/v_a：—", state: "is-down" },
+      banner: ["P1 发 prepare(5)", "A3 挂着；只要 A1、A2 回复，就有多数派"],
+      tone: ""
+    },
+    {
+      caption:
+        "A1、A2 承诺不再接受小于 5 的提案，回复没有旧值。",
+      note: "多数派是 2/3；P1 不需要等 A3。",
+      p1: { badge: "n=5", l1: "phase：prepare", l2: "收到 2 个 ok", state: "is-focus" },
+      p2: { badge: "idle", l1: "phase：—", l2: "value：Y", state: "" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：—", state: "is-good" },
+      a2: { badge: "A2", l1: "n_p：5", l2: "n_a/v_a：—", state: "is-good" },
+      a3: { badge: "A3", l1: "n_p：0", l2: "n_a/v_a：—", state: "is-down" },
+      banner: ["prepare 拿到多数派", "A1、A2 承诺：不再接受编号小于 5 的提案"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "P1 发 accept(5, X)；A1、A2 接受，X 在多数派上被选中。",
+      note: "选中（chosen）不等于所有节点都知道；学习者稍后才得知。",
+      p1: { badge: "n=5", l1: "phase：accept", l2: "value：X", state: "is-good" },
+      p2: { badge: "idle", l1: "phase：—", l2: "value：Y", state: "" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-good" },
+      a2: { badge: "A2", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-good" },
+      a3: { badge: "A3", l1: "n_p：0", l2: "n_a/v_a：—", state: "is-down" },
+      banner: ["X 被选中", "A1 + A2 构成 2/3 多数派；X 是唯一可能被选中的值"],
+      tone: "good"
+    },
+    {
+      caption:
+        "P2 不知道 X 已选中，选编号 6，向 A2、A3 发 prepare；A1 这时挂了。",
+      note: "P2 可以不知道上一轮结果，但接受者不能忘记自己接受过什么。",
+      p1: { badge: "n=5", l1: "value：X", l2: "状态：已选中", state: "" },
+      p2: { badge: "n=6", l1: "phase：prepare", l2: "value：Y", state: "is-focus" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-down" },
+      a2: { badge: "A2", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "" },
+      a3: { badge: "A3", l1: "n_p：0", l2: "n_a/v_a：—", state: "" },
+      banner: ["P2 用更大的编号 6 发起 prepare", "A1 挂了；A2、A3 构成另一个多数派"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "A2 回复 (n_a=5, v_a=X)，A3 没有旧值；P2 必须复用 X。",
+      note: "如果 P2 忽略 A2 的旧值，就可能选出和 X 不同的 Y。",
+      p1: { badge: "n=5", l1: "value：X", l2: "状态：已选中", state: "" },
+      p2: { badge: "n=6", l1: "phase：prepare", l2: "看到旧值 X", state: "is-focus" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-down" },
+      a2: { badge: "A2", l1: "n_p：6", l2: "n_a/v_a：5, X", state: "is-good" },
+      a3: { badge: "A3", l1: "n_p：6", l2: "n_a/v_a：—", state: "is-good" },
+      banner: ["A2 带回旧值 X", "P2 收到 (n_a=5, v_a=X)，不能改提 Y"],
+      tone: "good"
+    },
+    {
+      caption:
+        "P2 发 accept(6, X)；A2、A3 接受，X 再次被选中。",
+      note: "A2 同时属于两轮多数派，是安全性的交集。",
+      p1: { badge: "n=5", l1: "value：X", l2: "状态：已选中", state: "" },
+      p2: { badge: "n=6", l1: "phase：accept", l2: "value：X", state: "is-good" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-down" },
+      a2: { badge: "A2", l1: "n_p：6", l2: "n_a/v_a：6, X", state: "is-good" },
+      a3: { badge: "A3", l1: "n_p：6", l2: "n_a/v_a：6, X", state: "is-good" },
+      banner: ["X 再次被选中", "两轮多数派在 A2 相交，旧值 X 被带到了新一轮"],
+      tone: "good"
+    },
+    {
+      caption:
+        "反事实：如果 P2 发 accept(6, Y)，A2、A3 会接受 Y，X 和 Y 都被选中。",
+      note: "这不是实现细节，而是安全性被破坏；接受者必须在回复前持久化。",
+      p1: { badge: "n=5", l1: "value：X", l2: "状态：已选中", state: "" },
+      p2: { badge: "n=6", l1: "phase：accept", l2: "value：Y", state: "is-bad" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-down" },
+      a2: { badge: "A2", l1: "n_p：6", l2: "n_a/v_a：6, Y", state: "is-bad" },
+      a3: { badge: "A3", l1: "n_p：6", l2: "n_a/v_a：6, Y", state: "is-bad" },
+      banner: ["反例：两个值都被选中", "X 在 A1+A2 上选中，Y 在 A2+A3 上选中；安全性被破坏"],
+      tone: "bad"
+    },
+    {
+      caption:
+        "规则：多数派交集 + 接受者持久化 n_p 和 (n_a, v_a)。",
+      note: "Paxos 保证安全，不保证活性；活锁要靠稳定 leader 或随机退避打破。",
+      p1: { badge: "n=5", l1: "value：X", l2: "状态：已选中", state: "" },
+      p2: { badge: "n=6", l1: "value：X", l2: "状态：已选中", state: "" },
+      a1: { badge: "A1", l1: "n_p：5", l2: "n_a/v_a：5, X", state: "is-down" },
+      a2: { badge: "A2", l1: "n_p：6", l2: "n_a/v_a：6, X", state: "is-good" },
+      a3: { badge: "A3", l1: "n_p：6", l2: "n_a/v_a：6, X", state: "is-good" },
+      banner: ["安全来自多数派交集", "接受者落盘，提议者可以忘；两者不能都忘"],
+      tone: "good"
+    }
+  ];
+
+  A.SPECS["paxos"] = {
+    title: "Paxos：prepare、accept 与多数派交集",
+    width: 760,
+    height: 360,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+      refs.p1 = paxCard(layer, 40, 96, 130, 70, "P1");
+      refs.p2 = paxCard(layer, 40, 220, 130, 70, "P2");
+      refs.a1 = paxCard(layer, 380, 80, 150, 70, "A1");
+      refs.a2 = paxCard(layer, 380, 170, 150, 70, "A2");
+      refs.a3 = paxCard(layer, 380, 260, 150, 70, "A3");
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 12, width: 680, height: 52, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 37, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 57, "", "t-sub", "middle");
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      paint(refs.p1, st.p1);
+      paint(refs.p2, st.p2);
+      paint(refs.a1, st.a1);
+      paint(refs.a2, st.a2);
+      paint(refs.a3, st.a3);
+      refs.banner.setAttribute(
+        "class",
+        "anim-banner" + (st.tone ? " is-" + st.tone : "")
+      );
+      refs.line1.textContent = st.banner[0];
+      refs.line2.textContent = st.banner[1];
+
+      if (i === 0) {
+        api.msg({ from: [170, 128], to: [380, 112], label: "prepare(5)", color: "accent", curve: -14 });
+        api.msg({ from: [170, 128], to: [380, 202], label: "prepare(5)", color: "accent", curve: 14, delay: 90 });
+      }
+      if (i === 1) {
+        api.msg({ from: [380, 112], to: [170, 128], label: "ok", color: "ok", curve: -14 });
+        api.msg({ from: [380, 202], to: [170, 128], label: "ok", color: "ok", curve: 14, delay: 90 });
+      }
+      if (i === 2) {
+        api.msg({ from: [170, 128], to: [380, 112], label: "accept(5,X)", color: "ok", curve: -14 });
+        api.msg({ from: [170, 128], to: [380, 202], label: "accept(5,X)", color: "ok", curve: 14, delay: 90 });
+      }
+      if (i === 3) {
+        api.msg({ from: [170, 252], to: [380, 202], label: "prepare(6)", color: "warn", curve: -14 });
+        api.msg({ from: [170, 252], to: [380, 292], label: "prepare(6)", color: "warn", curve: 14, delay: 90 });
+      }
+      if (i === 4) {
+        api.msg({ from: [380, 202], to: [170, 252], label: "5, X", color: "ok", curve: -14 });
+        api.msg({ from: [380, 292], to: [170, 252], label: "—", color: "muted", curve: 14, delay: 90 });
+      }
+      if (i === 5) {
+        api.msg({ from: [170, 252], to: [380, 202], label: "accept(6,X)", color: "ok", curve: -14 });
+        api.msg({ from: [170, 252], to: [380, 292], label: "accept(6,X)", color: "ok", curve: 14, delay: 90 });
+      }
+      if (i === 6) {
+        api.msg({ from: [170, 252], to: [380, 202], label: "accept(6,Y)", color: "bad", curve: -14, dashed: true });
+        api.msg({ from: [170, 252], to: [380, 292], label: "accept(6,Y)", color: "bad", curve: 14, delay: 90, dashed: true });
+      }
+      if (i === 7) {
+        api.pulse(refs.a2.g);
+      }
+    }
+  };
+})();
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+
+  var ROW_Y = [96, 156, 216];
+  var COL_X = [240, 310, 380, 450, 520];
+  var CW = 58;
+  var CH = 38;
+
+  var STEPS = [
+    {
+      caption:
+        "S1 是 term 4 的 leader；S2 日志和它一致，S3 在 index 3 上有一个 term 3 的旧条目。",
+      note: "committed 前缀是 index 1–2；S3 的冲突条目还没被覆盖。",
+      logs: [[1, 1, 2, 2, 0], [1, 1, 2, 2, 0], [1, 1, 3, 3, 0]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "5", "5"],
+      match: ["—", "4", "2"],
+      committed: 2
+    },
+    {
+      caption:
+        "客户端发来 x=1；S1 把它追加到 index 5，term 记为 4。",
+      note: "leader 先写本地日志，再并行复制；此时还没有提交。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 0], [1, 1, 3, 3, 0]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "5", "5"],
+      match: ["—", "4", "2"],
+      committed: 2
+    },
+    {
+      caption:
+        "S1 发 AppendEntries(prev=4, term=2)；S2 追加成功，S3 在 index 4 上 term 不匹配。",
+      note: "follower 先检查 prevLogIndex/prevLogTerm，再决定追加还是拒绝。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 4], [1, 1, 3, 3, 0]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "6", "5"],
+      match: ["—", "5", "2"],
+      committed: 2
+    },
+    {
+      caption:
+        "S3 拒绝并带回冲突信息：XTerm=3，XIndex=3。",
+      note: "如果没有这个信息，leader 只能把 nextIndex 一条一条往回退。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 4], [1, 1, 3, 3, 0]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "6", "5"],
+      match: ["—", "5", "2"],
+      committed: 2,
+      conflict: 2
+    },
+    {
+      caption:
+        "S1 把 nextIndex[S3] 一次退到 3，发送 prev=2、entries=3..5。",
+      note: "快速回退跳过整个冲突 term；TestBackup3B 检查回退不能太慢。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 4], [1, 1, 3, 3, 0]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "6", "3"],
+      match: ["—", "5", "2"],
+      committed: 2
+    },
+    {
+      caption:
+        "S3 截断冲突后缀，追加 index 3–5；它的日志现在和 leader 一致。",
+      note: "日志只从 leader 流向 follower；follower 的未提交后缀可以被覆盖。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 4], [1, 1, 2, 2, 4]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "6", "6"],
+      match: ["—", "5", "5"],
+      committed: 2
+    },
+    {
+      caption:
+        "index 5 已在 S1、S2、S3 三个 server 上，构成多数派；commitIndex 推进到 5。",
+      note: "S1 把条目交给状态机执行，然后回复客户端；下一次心跳带上 leaderCommit=5。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 4], [1, 1, 2, 2, 4]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "6", "6"],
+      match: ["—", "5", "5"],
+      committed: 5
+    },
+    {
+      caption:
+        "规则：nextIndex 找前缀，matchIndex 记多数派；提交看 matchIndex 的中位数。",
+      note: "leader 只提交当前 term 的条目；旧 term 条目随当前 term 的提交间接完成。",
+      logs: [[1, 1, 2, 2, 4], [1, 1, 2, 2, 4], [1, 1, 2, 2, 4]],
+      roles: ["L4", "F4", "F4"],
+      next: ["—", "6", "6"],
+      match: ["—", "5", "5"],
+      committed: 5
+    }
+  ];
+
+  A.SPECS["raft-replication"] = {
+    title: "Raft 日志复制：AppendEntries、冲突回退和 commitIndex",
+    width: 760,
+    height: 340,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+
+      refs.note = textEl(layer, 40, 40, "", "t-name");
+      refs.commit = textEl(layer, 600, 40, "", "t-badge");
+
+      [1, 2, 3, 4, 5].forEach(function (n, c) {
+        textEl(layer, COL_X[c] + CW / 2, 82, String(n), "t-small", "middle");
+      });
+
+      refs.rows = [0, 1, 2].map(function (r) {
+        var y = ROW_Y[r];
+        var g = svg("g", { class: "anim-row" }, layer);
+        var name = textEl(g, 40, y + 24, "S" + (r + 1), "t-name");
+        var badge = textEl(g, 88, y + 24, "", "t-badge");
+        var next = textEl(g, 600, y + 18, "", "t-small");
+        var match = textEl(g, 600, y + 34, "", "t-small");
+        var cells = [0, 1, 2, 3, 4].map(function (c) {
+          var cell = svg(
+            "g",
+            { class: "anim-cell", transform: "translate(" + COL_X[c] + "," + y + ")" },
+            g
+          );
+          svg("rect", { width: CW, height: CH, rx: 3 }, cell);
+          var term = textEl(cell, CW / 2, 24, "", "", "middle");
+          var check = textEl(cell, CW - 6, 33, "✓", "t-check", "end");
+          return { g: cell, term: term, check: check };
+        });
+        return { g: g, name: name, badge: badge, next: next, match: match, cells: cells };
+      });
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 276, width: 680, height: 52, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 301, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 321, "", "t-sub", "middle");
+
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      refs.note.textContent = "term 4 · leader S1";
+      refs.commit.textContent = "commitIndex = " + st.committed;
+
+      st.logs.forEach(function (log, r) {
+        var row = refs.rows[r];
+        var role = st.roles[r];
+        row.g.setAttribute("class", "anim-row" + (role.charAt(0) === "X" ? " is-down" : ""));
+        row.badge.textContent = role;
+        row.badge.setAttribute(
+          "class",
+          "t-badge" + (role.charAt(0) === "L" ? " is-leader" : "")
+        );
+        row.next.textContent = "next=" + st.next[r];
+        row.match.textContent = "match=" + st.match[r];
+        row.cells.forEach(function (cell, c) {
+          var term = log[c];
+          var cls = "anim-cell";
+          if (!term) {
+            cls += " is-ghost";
+          } else {
+            cls += " t" + term;
+            if (c < st.committed) cls += " is-committed";
+          }
+          if (st.conflict === r && c === 2) cls += " is-hot";
+          cell.g.setAttribute("class", cls);
+          cell.term.textContent = term ? term : "";
+          cell.check.textContent = term && c < st.committed ? "✓" : "";
+        });
+      });
+
+      refs.banner.setAttribute("class", "anim-banner");
+      if (i === 0) {
+        refs.line1.textContent = "初始日志：S3 在 index 3 上有 term 3";
+        refs.line2.textContent = "S2 和 leader 一致；committed 前缀是 1–2";
+      } else if (i === 1) {
+        refs.line1.textContent = "leader 追加 index 5（term 4）";
+        refs.line2.textContent = "先写本地，再复制；还没有提交";
+      } else if (i === 2) {
+        refs.line1.textContent = "AppendEntries：S2 成功，S3 拒绝";
+        refs.line2.textContent = "S2 的 matchIndex 推进到 5；S3 仍停在冲突点";
+      } else if (i === 3) {
+        refs.line1.textContent = "S3 返回冲突信息";
+        refs.line2.textContent = "XTerm=3，XIndex=3；leader 可以跳过整个 term";
+      } else if (i === 4) {
+        refs.line1.textContent = "nextIndex[S3] 回退到 3";
+        refs.line2.textContent = "重发 prev=2，entries=3..5";
+      } else if (i === 5) {
+        refs.line1.textContent = "S3 截断并追平";
+        refs.line2.textContent = "三个 server 的日志在 index 1–5 上一致";
+      } else if (i === 6) {
+        refs.line1.textContent = "index 5 到多数派，提交";
+        refs.line2.textContent = "commitIndex=5；apply 后回复客户端";
+      } else {
+        refs.line1.textContent = "nextIndex 找前缀，matchIndex 记进度";
+        refs.line2.textContent = "提交看多数派的 matchIndex；旧 term 条目不能直接提交";
+      }
+
+      if (i === 1) api.pulse(refs.rows[0].cells[4].g);
+      if (i === 2) api.pulse(refs.rows[2].cells[3].g);
+      if (i === 3) api.pulse(refs.rows[2].cells[3].g);
+      if (i === 4) api.pulse(refs.rows[2].next);
+      if (i === 5) {
+        api.pulse(refs.rows[2].cells[2].g);
+        api.pulse(refs.rows[2].cells[4].g);
+      }
+      if (i === 6) {
+        [0, 1, 2].forEach(function (r) {
+          api.pulse(refs.rows[r].cells[4].g);
+        });
+      }
+    }
+  };
+})();
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+  var chip = A.chip;
+
+  var STEPS = [
+    {
+      caption:
+        "S1 在 index 100 做快照：lastIncludedIndex=100、term=6，日志前缀被截掉。",
+      note: "快照保存状态机在 index 100 的完整状态；Raft 只保留 101 之后的日志。",
+      s3Snap: false,
+      s3Old: true,
+      s3Entries: 0,
+      s3State: "log 1–80",
+      banner: ["leader 在 index 100 做快照", "lastIncludedIndex=100，lastIncludedTerm=6"],
+      tone: ""
+    },
+    {
+      caption:
+        "S3 只有到 80 的日志；S1 的 nextIndex[S3]=81，已经小于等于 100。",
+      note: "日志前缀已经被截掉，leader 手里没有 index 81 的条目可发。",
+      s3Snap: false,
+      s3Old: true,
+      s3Entries: 0,
+      s3State: "log 1–80 · next=81",
+      banner: ["S3 落后 20 个下标", "nextIndex=81 ≤ lastIncludedIndex=100"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "S1 不能再发 index 81 的 AppendEntries，改发 InstallSnapshot。",
+      note: "3D 只要求一次发送完整快照，不按 offset 分块。",
+      s3Snap: false,
+      s3Old: true,
+      s3Entries: 0,
+      s3State: "等待快照",
+      banner: ["发送 InstallSnapshot", "lastIncludedIndex=100，lastIncludedTerm=6"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "S3 安装快照：状态机重置，commitIndex 和 lastApplied 跳到 100。",
+      note: "如果 S3 在 100 处有相同 term 的条目，可以保留后缀；没有就整条日志换成快照。",
+      s3Snap: true,
+      s3Old: false,
+      s3Entries: 0,
+      s3State: "installed 100",
+      banner: ["S3 安装快照", "commitIndex = lastApplied = 100"],
+      tone: "good"
+    },
+    {
+      caption:
+        "S1 发 AppendEntries(prevLogIndex=100, prevLogTerm=6, entries=101..105)。",
+      note: "下一条复制的起点是 101，不是 100；lastIncludedIndex 是覆盖的最后一个下标。",
+      s3Snap: true,
+      s3Old: false,
+      s3Entries: 0,
+      s3State: "prev=100",
+      banner: ["从 101 继续复制", "prevLogIndex=100，prevLogTerm=6"],
+      tone: ""
+    },
+    {
+      caption:
+        "S3 追加 101–105，matchIndex 追到 105，恢复正常复制。",
+      note: "快照安装和后续 AppendEntries 都走同一条日志顺序，状态机不会倒退。",
+      s3Snap: true,
+      s3Old: false,
+      s3Entries: 5,
+      s3State: "match=105",
+      banner: ["S3 追平", "快照 + 101–105，状态和 leader 一致"],
+      tone: "good"
+    },
+    {
+      caption:
+        "快照必须包含客户端去重表；否则客户端重试会再次执行已经应用过的命令。",
+      note: "快照要和 Raft 状态一起 persister.Save()；服务只允许前进，不能回退 applyCh。",
+      s3Snap: true,
+      s3Old: false,
+      s3Entries: 5,
+      s3State: "dedup 在快照里",
+      banner: ["去重表也要进快照", "客户端 ID + 序列号；否则重试会重复执行"],
+      tone: "bad"
+    },
+    {
+      caption:
+        "规则：lastIncludedIndex 是快照覆盖的最后一个下标，不是下一个日志下标。",
+      note: "混淆这两个值，会让 applyCh 倒退或让 follower 永远追不上。",
+      s3Snap: true,
+      s3Old: false,
+      s3Entries: 5,
+      s3State: "caught up",
+      banner: ["快照边界要写对", "lastIncludedIndex=100 → 下一条从 101 开始"],
+      tone: "good"
+    }
+  ];
+
+  A.SPECS["raft-snapshot"] = {
+    title: "Raft 快照：InstallSnapshot 和 lastIncludedIndex",
+    width: 760,
+    height: 340,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+      textEl(layer, 40, 92, "S1 · leader term 7", "t-name");
+      textEl(layer, 40, 202, "S3 · follower", "t-name");
+
+      refs.s1Snap = svg("g", { class: "anim-fs is-good" }, layer);
+      svg("rect", { x: 60, y: 100, width: 300, height: 36, rx: 3 }, refs.s1Snap);
+      textEl(refs.s1Snap, 210, 123, "snapshot 1–100", "t-mono", "middle");
+
+      refs.s1Entries = [101, 102, 103, 104, 105].map(function (n, i) {
+        return chip(layer, 370 + i * 44, 100, 40, 36, String(n), "is-on");
+      });
+
+      refs.s3Old = svg("g", { class: "anim-fs" }, layer);
+      svg("rect", { x: 60, y: 210, width: 240, height: 36, rx: 3 }, refs.s3Old);
+      textEl(refs.s3Old, 180, 233, "log 1–80", "t-mono", "middle");
+
+      refs.s3Snap = svg("g", { class: "anim-fs is-good" }, layer);
+      svg("rect", { x: 60, y: 210, width: 300, height: 36, rx: 3 }, refs.s3Snap);
+      textEl(refs.s3Snap, 210, 233, "snapshot 1–100", "t-mono", "middle");
+      refs.s3Snap.style.opacity = 0;
+
+      refs.s3Entries = [101, 102, 103, 104, 105].map(function (n, i) {
+        var c = chip(layer, 370 + i * 44, 210, 40, 36, String(n), "is-off");
+        return c;
+      });
+
+      refs.s3State = textEl(layer, 60, 270, "", "t-small");
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 12, width: 680, height: 52, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 37, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 57, "", "t-sub", "middle");
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      refs.s3Old.style.opacity = st.s3Old ? 1 : 0;
+      refs.s3Snap.style.opacity = st.s3Snap ? 1 : 0;
+      refs.s3Entries.forEach(function (c, j) {
+        c.g.setAttribute(
+          "class",
+          "anim-chip " + (j < st.s3Entries ? "is-on" : "is-off")
+        );
+      });
+      refs.s3State.textContent = st.s3State;
+      refs.banner.setAttribute(
+        "class",
+        "anim-banner" + (st.tone ? " is-" + st.tone : "")
+      );
+      refs.line1.textContent = st.banner[0];
+      refs.line2.textContent = st.banner[1];
+
+      if (i === 2) {
+        api.msg({
+          from: [300, 140],
+          to: [300, 204],
+          label: "InstallSnapshot(100, term 6)",
+          color: "warn",
+          curve: -12,
+          labelDy: 0
+        });
+      }
+      if (i === 4) {
+        api.msg({
+          from: [340, 140],
+          to: [340, 204],
+          label: "AppendEntries(prev=100)",
+          color: "accent",
+          curve: -12,
+          labelDy: 0
+        });
+      }
+      if (i === 3) api.pulse(refs.s3Snap);
+      if (i === 5) refs.s3Entries.forEach(function (c) { api.pulse(c.g); });
+    }
+  };
+})();
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+  var card = A.card;
+
+  function svcCard(layer, x, y, w, h, name) {
+    var c = card(layer, x, y, w, h);
+    c.name.textContent = name;
+    return c;
+  }
+
+  function paint(c, d) {
+    c.badge.textContent = d.badge;
+    c.sub.textContent = d.l1;
+    c.sub2.textContent = d.l2;
+    c.g.setAttribute("class", "anim-node " + (d.state || ""));
+  }
+
+  var STEPS = [
+    {
+      caption:
+        "pod-a 发起一条新 TCP 连接，目标是 Service VIP 10.96.0.10:80。",
+      note: "VIP 不属于任何网卡；它由本机路由和 iptables 规则接住。",
+      client: { badge: "SYN", l1: "client · 10.22.0.2", l2: "目标：VIP:80", state: "is-focus" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "dummy svc0", state: "is-focus" },
+      ipt: { badge: "PREROUTING", l1: "规则链", l2: "等待匹配", state: "" },
+      ct: { badge: "ct", l1: "flow：—", l2: "flow：—", state: "" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：0", state: "" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：0", state: "" },
+      banner: ["新连接发往 VIP", "client → 10.96.0.10:80"],
+      tone: ""
+    },
+    {
+      caption:
+        "PREROUTING 匹配目的地址 VIP，跳到 MINICNI-SVC 规则链。",
+      note: "DNAT 只处理连接的第一个包；后续包由 conntrack 直接映射。",
+      client: { badge: "SYN", l1: "client · 10.22.0.2", l2: "目标：VIP:80", state: "" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "命中", state: "is-good" },
+      ipt: { badge: "MATCH", l1: "MINICNI-SVC", l2: "准备 DNAT", state: "is-focus" },
+      ct: { badge: "ct", l1: "flow：—", l2: "flow：—", state: "" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：0", state: "" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：0", state: "" },
+      banner: ["命中 VIP 规则", "PREROUTING -d 10.96.0.10 -j MINICNI-SVC"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "nth 规则选中后端 A：DNAT 到 10.22.0.2:80。",
+      note: "`--ctstate NEW` 让计数器只看新连接，重传不会打乱轮询比例。",
+      client: { badge: "SYN", l1: "client · 10.22.0.2", l2: "目标：VIP:80", state: "" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "已 DNAT", state: "" },
+      ipt: { badge: "DNAT", l1: "→ A", l2: "10.22.0.2:80", state: "is-good" },
+      ct: { badge: "ct", l1: "flow：—", l2: "flow：—", state: "" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：1", state: "is-good" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：0", state: "" },
+      banner: ["第一条新连接选 A", "DNAT 到 10.22.0.2:80"],
+      tone: "good"
+    },
+    {
+      caption:
+        "conntrack 记录这条流；后续包不再走 DNAT，直接按记录转发。",
+      note: "同一个 TCP 连接内的多个请求只走一个后端；轮询发生在连接级别。",
+      client: { badge: "EST", l1: "连接已建立", l2: "目标：VIP:80", state: "" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "转发中", state: "" },
+      ipt: { badge: "DNAT", l1: "→ A", l2: "仅首包", state: "" },
+      ct: { badge: "ct", l1: "flow1：VIP→A", l2: "flow2：—", state: "is-good" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：1", state: "is-good" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：0", state: "" },
+      banner: ["conntrack 记住这条流", "后续包直接用映射，不再轮询"],
+      tone: "good"
+    },
+    {
+      caption:
+        "A 的回复经过 conntrack 还原 DNAT；客户端看到的源地址仍然是 VIP。",
+      note: "如果没有 conntrack，回包的源地址会是后端 IP，客户端 socket 会丢弃。",
+      client: { badge: "reply", l1: "源：VIP:80", l2: "内容：A", state: "is-good" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "对客户端可见", state: "" },
+      ipt: { badge: "DNAT", l1: "→ A", l2: "回包还原", state: "" },
+      ct: { badge: "ct", l1: "flow1：VIP→A", l2: "reply：A→VIP", state: "is-good" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：1", state: "is-good" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：0", state: "" },
+      banner: ["回包还原", "客户端看到源地址 VIP；后端真实地址被隐藏"],
+      tone: "good"
+    },
+    {
+      caption:
+        "下一条新连接选中后端 B；已有的 flow1 仍然固定在 A。",
+      note: "轮询计数器只对新连接生效；长连接不会中途换后端。",
+      client: { badge: "conn 2", l1: "client · 10.22.0.2", l2: "新连接 → VIP:80", state: "is-focus" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "第二次 DNAT", state: "" },
+      ipt: { badge: "DNAT", l1: "→ B", l2: "10.22.0.3:80", state: "is-focus" },
+      ct: { badge: "ct", l1: "flow1：VIP→A", l2: "flow2：VIP→B", state: "is-good" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：1", state: "" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：1", state: "is-good" },
+      banner: ["第二条新连接选 B", "flow1 仍走 A；每条连接各自粘住一个后端"],
+      tone: "good"
+    },
+    {
+      caption:
+        "hairpin：pod-a 访问 VIP 时，回复可能绕过宿主；需要 MARK + MASQUERADE。",
+      note: "后端和客户端在同一 bridge 上，回复按二层直接发给客户端，源 IP 不是 VIP。",
+      client: { badge: "hairpin", l1: "pod-a → VIP", l2: "同节点", state: "is-slow" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "打 mark", state: "is-slow" },
+      ipt: { badge: "SNAT", l1: "MARK 0x4000", l2: "MASQUERADE", state: "is-slow" },
+      ct: { badge: "ct", l1: "flow1：VIP→A", l2: "hairpin：需要 SNAT", state: "is-slow" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "既是后端也是客户端", state: "is-slow" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：1", state: "" },
+      banner: ["同节点访问 VIP 需要 hairpin", "MARK + MASQUERADE，让回包先经过宿主"],
+      tone: "bad"
+    },
+    {
+      caption:
+        "规则：DNAT 只改首包，conntrack 负责整条流；Service 轮询是连接级的。",
+      note: "排查时先看 conntrack，再看 PREROUTING 的规则顺序；`-I` 和 `-A` 的顺序会决定 MARK 是否生效。",
+      client: { badge: "ok", l1: "连接稳定", l2: "源：VIP:80", state: "" },
+      vip: { badge: "svc", l1: "10.96.0.10:80", l2: "服务中", state: "" },
+      ipt: { badge: "DNAT", l1: "首包", l2: "conntrack 接管", state: "" },
+      ct: { badge: "ct", l1: "flow1：A", l2: "flow2：B", state: "is-good" },
+      a: { badge: "A", l1: "10.22.0.2:80", l2: "hits：1", state: "" },
+      b: { badge: "B", l1: "10.22.0.3:80", l2: "hits：1", state: "" },
+      banner: ["DNAT 只改首包", "同一条连接固定一个后端；conntrack 负责回包"],
+      tone: "good"
+    }
+  ];
+
+  A.SPECS["service-vip"] = {
+    title: "Service VIP：DNAT 轮询、conntrack 和 hairpin",
+    width: 760,
+    height: 380,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+      refs.client = svcCard(layer, 30, 150, 140, 70, "pod-a");
+      refs.vip = svcCard(layer, 210, 160, 150, 64, "VIP");
+      refs.ipt = svcCard(layer, 390, 80, 170, 80, "PREROUTING");
+      refs.ct = svcCard(layer, 390, 250, 190, 80, "conntrack");
+      refs.a = svcCard(layer, 600, 80, 130, 64, "pod-a（A）");
+      refs.b = svcCard(layer, 600, 250, 130, 64, "pod-b（B）");
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 12, width: 680, height: 52, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 37, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 57, "", "t-sub", "middle");
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      paint(refs.client, st.client);
+      paint(refs.vip, st.vip);
+      paint(refs.ipt, st.ipt);
+      paint(refs.ct, st.ct);
+      paint(refs.a, st.a);
+      paint(refs.b, st.b);
+      refs.banner.setAttribute(
+        "class",
+        "anim-banner" + (st.tone ? " is-" + st.tone : "")
+      );
+      refs.line1.textContent = st.banner[0];
+      refs.line2.textContent = st.banner[1];
+
+      if (i === 0) {
+        api.msg({ from: [170, 185], to: [210, 185], label: "SYN", color: "accent", curve: -6 });
+      }
+      if (i === 1) {
+        api.msg({ from: [360, 180], to: [390, 120], label: "PREROUTING", color: "warn", curve: 12 });
+      }
+      if (i === 2) {
+        api.token({ from: [560, 120], to: [600, 120], label: "A", color: "ok" });
+      }
+      if (i === 3) {
+        api.msg({ from: [640, 144], to: [580, 250], label: "flow", color: "info", curve: 14 });
+      }
+      if (i === 4) {
+        api.msg({ from: [390, 270], to: [170, 205], label: "reply：VIP", color: "ok", curve: 22 });
+      }
+      if (i === 5) {
+        api.token({ from: [560, 140], to: [600, 282], label: "B", color: "ok" });
+      }
+      if (i === 6) {
+        api.pulse(refs.vip.g);
+        api.pulse(refs.ipt.g);
+      }
+    }
+  };
+})();
+
+(function () {
+  var A = window.InfraAnim;
+  var svg = A.svg;
+  var textEl = A.textEl;
+
+  var X0 = 120;
+  var SCALE = 80;
+  function tx(t) { return X0 + t * SCALE; }
+
+  var STEPS = [
+    {
+      caption:
+        "A 向租约服务申请资源 ws，拿到 epoch=1，TTL 2 秒。",
+      note: "epoch 是 fencing token，按 resource 单调递增；过期时间用服务端时钟。",
+      b: false,
+      lease2: false,
+      lease3: false,
+      storage1: false,
+      storage2: false,
+      storage3: false,
+      pause: false,
+      resume: false,
+      write2: false,
+      aState: "",
+      banner: ["A acquire：epoch=1", "TTL=2s；租约服务开始计时"],
+      tone: ""
+    },
+    {
+      caption:
+        "A 带 epoch=1 写存储；存储把 max_epoch 从 0 推到 1，接受这次写。",
+      note: "存储端必须把 epoch 和写放在同一个原子操作里；先读后写会留窗口。",
+      b: false,
+      lease2: false,
+      lease3: false,
+      storage1: true,
+      storage2: false,
+      storage3: false,
+      pause: false,
+      resume: false,
+      write2: false,
+      aState: "",
+      banner: ["A 写入成功", "storage.max_epoch：0 → 1"],
+      tone: "good"
+    },
+    {
+      caption:
+        "A 被 SIGSTOP（模拟 GC 暂停）；2 秒后租约过期，但 A 自己不知道。",
+      note: "租约过期只是“可以换 owner”，不是“旧 owner 已经停止写”。",
+      b: false,
+      lease2: true,
+      lease3: false,
+      storage1: true,
+      storage2: false,
+      storage3: false,
+      pause: true,
+      resume: false,
+      write2: false,
+      aState: "is-slow",
+      banner: ["A 暂停，租约到期", "lease：granted → expired"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "B 申请同一个资源，租约服务发出 epoch=2。",
+      note: "新 epoch 必须先 fsync，再返回给 B；否则服务重启后可能回到 1。",
+      b: true,
+      lease2: true,
+      lease3: true,
+      storage1: true,
+      storage2: false,
+      storage3: false,
+      pause: true,
+      resume: false,
+      write2: false,
+      aState: "is-slow",
+      banner: ["B acquire：epoch=2", "同一 resource 的 token 只能递增"],
+      tone: "warn"
+    },
+    {
+      caption:
+        "B 带 epoch=2 写存储；存储把 max_epoch 推到 2，接受。",
+      note: "现在 A 的 epoch=1 已经落后；但只有存储端比较 token，才能拦住 A。",
+      b: true,
+      lease2: true,
+      lease3: true,
+      storage1: true,
+      storage2: true,
+      storage3: false,
+      pause: true,
+      resume: false,
+      write2: false,
+      aState: "is-slow",
+      banner: ["B 写入成功", "storage.max_epoch：1 → 2"],
+      tone: "good"
+    },
+    {
+      caption:
+        "A 恢复后仍拿 epoch=1 写；存储发现 1 < 2，返回 fenced，拒绝旧 owner。",
+      note: "这就是 fencing：不依赖 A 是否知道自己过期，只依赖存储端的原子比较。",
+      b: true,
+      lease2: true,
+      lease3: true,
+      storage1: true,
+      storage2: true,
+      storage3: true,
+      pause: true,
+      resume: true,
+      write2: true,
+      aState: "is-bad",
+      banner: ["旧 owner 被 fenced", "storage.max_epoch=2；epoch=1 的写被拒绝"],
+      tone: "bad"
+    },
+    {
+      caption:
+        "规则：租约负责选 owner，fencing 负责让旧 owner 写不进去；两者缺一不可。",
+      note: "审计日志再把每次授予和写入串成 hash chain，用来事后证明发生过什么。",
+      b: true,
+      lease2: true,
+      lease3: true,
+      storage1: true,
+      storage2: true,
+      storage3: true,
+      pause: true,
+      resume: true,
+      write2: true,
+      aState: "is-bad",
+      banner: ["租约 + fencing", "选主靠租约；正确性靠存储端比较 epoch"],
+      tone: "good"
+    }
+  ];
+
+  A.SPECS["aos-lease"] = {
+    title: "租约与 fencing：旧 owner 为什么写不进去",
+    width: 760,
+    height: 380,
+    steps: STEPS,
+    build: function (layer) {
+      var refs = {};
+      textEl(layer, 40, 108, "A", "t-name");
+      textEl(layer, 40, 168, "B", "t-name");
+      textEl(layer, 40, 228, "lease", "t-name");
+      textEl(layer, 40, 288, "storage", "t-name");
+
+      refs.aBar = svg("g", { class: "anim-op" }, layer);
+      svg("rect", { x: tx(0), y: 90, width: tx(2) - tx(0), height: 28, rx: 3 }, refs.aBar);
+      textEl(refs.aBar, tx(1), 109, "A · epoch 1", "t-mono", "middle");
+      refs.aState = refs.aBar;
+
+      refs.bBar = svg("g", { class: "anim-op" }, layer);
+      svg("rect", { x: tx(2.8), y: 150, width: tx(5) - tx(2.8), height: 28, rx: 3 }, refs.bBar);
+      textEl(refs.bBar, tx(3.9), 169, "B · epoch 2", "t-mono", "middle");
+      refs.bBar.style.opacity = 0;
+
+      refs.lease1 = svg("g", { class: "anim-op" }, layer);
+      svg("rect", { x: tx(0), y: 210, width: tx(2) - tx(0), height: 28, rx: 3 }, refs.lease1);
+      textEl(refs.lease1, tx(1), 229, "granted A e1", "t-mono", "middle");
+
+      refs.lease2 = svg("g", { class: "anim-op is-bad" }, layer);
+      svg("rect", { x: tx(2), y: 210, width: tx(2.8) - tx(2), height: 28, rx: 3 }, refs.lease2);
+      textEl(refs.lease2, tx(2.4), 229, "expired", "t-small", "middle");
+      refs.lease2.style.opacity = 0;
+
+      refs.lease3 = svg("g", { class: "anim-op" }, layer);
+      svg("rect", { x: tx(2.8), y: 210, width: tx(5) - tx(2.8), height: 28, rx: 3 }, refs.lease3);
+      textEl(refs.lease3, tx(3.9), 229, "granted B e2", "t-mono", "middle");
+      refs.lease3.style.opacity = 0;
+
+      refs.store1 = svg("g", { class: "anim-badge is-good" }, layer);
+      svg("rect", { x: tx(0.4), y: 270, width: 110, height: 32, rx: 3 }, refs.store1);
+      textEl(refs.store1, tx(0.4) + 55, 291, "max=1 · ok", "t-small", "middle");
+      refs.store1.style.opacity = 0;
+
+      refs.store2 = svg("g", { class: "anim-badge is-good" }, layer);
+      svg("rect", { x: tx(2.9), y: 270, width: 110, height: 32, rx: 3 }, refs.store2);
+      textEl(refs.store2, tx(2.9) + 55, 291, "max=2 · ok", "t-small", "middle");
+      refs.store2.style.opacity = 0;
+
+      refs.store3 = svg("g", { class: "anim-badge is-bad" }, layer);
+      svg("rect", { x: tx(4.5), y: 270, width: 120, height: 32, rx: 3 }, refs.store3);
+      textEl(refs.store3, tx(4.5) + 60, 291, "e1 · fenced", "t-small", "middle");
+      refs.store3.style.opacity = 0;
+
+      refs.pause = svg("g", {}, layer);
+      svg("line", { x1: tx(2), y1: 78, x2: tx(2), y2: 128, class: "anim-static-arrow" }, refs.pause).style.stroke = "var(--anim-bad)";
+      textEl(refs.pause, tx(2) + 4, 76, "SIGSTOP", "t-small").style.fill = "var(--anim-bad)";
+      refs.pause.style.opacity = 0;
+
+      refs.resume = svg("g", {}, layer);
+      svg("line", { x1: tx(4.5), y1: 78, x2: tx(4.5), y2: 128, class: "anim-static-arrow" }, refs.resume).style.stroke = "var(--anim-ok)";
+      textEl(refs.resume, tx(4.5) + 4, 76, "SIGCONT", "t-small").style.fill = "var(--anim-ok)";
+      refs.resume.style.opacity = 0;
+
+      svg("line", { x1: tx(0), y1: 330, x2: tx(6), y2: 330, class: "anim-static-arrow" }, layer);
+      [0, 1, 2, 3, 4, 5, 6].forEach(function (t) {
+        svg("line", { x1: tx(t), y1: 325, x2: tx(t), y2: 335, class: "anim-static-arrow" }, layer);
+        textEl(layer, tx(t), 350, t + "s", "t-small", "middle");
+      });
+
+      var banner = svg("g", { class: "anim-banner" }, layer);
+      svg("rect", { x: 40, y: 12, width: 680, height: 52, rx: 5 }, banner);
+      refs.banner = banner;
+      refs.line1 = textEl(banner, 380, 37, "", "t-name", "middle");
+      refs.line2 = textEl(banner, 380, 57, "", "t-sub", "middle");
+      return refs;
+    },
+    render: function (refs, i, api) {
+      var st = STEPS[i];
+      refs.bBar.style.opacity = st.b ? 1 : 0;
+      refs.lease2.style.opacity = st.lease2 ? 1 : 0;
+      refs.lease3.style.opacity = st.lease3 ? 1 : 0;
+      refs.store1.style.opacity = st.storage1 ? 1 : 0;
+      refs.store2.style.opacity = st.storage2 ? 1 : 0;
+      refs.store3.style.opacity = st.storage3 ? 1 : 0;
+      refs.pause.style.opacity = st.pause ? 1 : 0;
+      refs.resume.style.opacity = st.resume ? 1 : 0;
+      refs.aBar.setAttribute("class", "anim-op " + (st.aState || ""));
+      refs.banner.setAttribute(
+        "class",
+        "anim-banner" + (st.tone ? " is-" + st.tone : "")
+      );
+      refs.line1.textContent = st.banner[0];
+      refs.line2.textContent = st.banner[1];
+      if (i === 5) api.pulse(refs.store3);
+      if (i === 4) api.pulse(refs.store2);
     }
   };
 })();

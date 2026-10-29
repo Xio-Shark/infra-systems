@@ -140,6 +140,12 @@ client                    server
 
 这里真正起作用的是条件写：重复请求带着旧版本，自然失效；版本号本身不是请求 ID。它省掉了一张去重表，但只适用于能表达成比较并交换的操作。发邮件、追加日志这类有外部副作用的操作，仍然需要显式的请求 ID 和持久化去重表。
 
+把这次 `ErrVersion` / `ErrMaybe` 的往返走一遍：
+
+<div class="anim" data-anim="rpc-retry">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 ### goroutine 和锁的边界
 
 服务端每个请求一个 goroutine，意味着 handler 里的局部变量是安全的，共享的 map、任务表、日志不是。互斥锁（mutex）保护的是不变量，不是某一行代码。Lab 2 里“比较版本”和“更新值和版本”必须在同一个临界区（critical section）里，否则两个客户端都看到版本 0，都写入，后一个覆盖前一个。
@@ -220,6 +226,12 @@ master 的元数据全在内存里，命名空间和文件到 chunk 的映射写
 ```
 
 看什么：控制流是 1、2、4、7，数据流是 3；数据先于写请求到达所有副本。primary 只排序和转发控制消息，不搬数据，所以不会成为中转站。
+
+把七步写路径压缩成一条动画：
+
+<div class="anim" data-anim="gfs-write">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
 
 ### 三种一致性状态
 
@@ -325,6 +337,12 @@ P2
 P2 不知道 X 已经选中，想提 Y，发 prepare(6)。这次 A1 挂了，A2、A3 回复。A2 的回复是 (n_a=5, v_a=X)，P2 必须发 accept(6, X)。如果 P2 违反规则发 accept(6, Y)，A2 和 A3 在 n=6 下会接受 Y，系统就出现了两个被选中的值。这个反例说明“提议者必须选 n_a 最大的值”不是优化，是安全规则。
 
 再看崩溃。A2 接受 5/X 后崩溃，A1 也接受了，X 已经选中。A2 重启后如果丢了 n_a，P2 发 prepare(6) 时，A2 和 A3 都回复没接受过值，P2 就会提 Y，A2、A3 接受，Y 被选中。X 和 Y 都被选中，安全被破坏。所以接受者的状态必须落盘。
+
+把两轮提案和多数派交集走一遍：
+
+<div class="anim" data-anim="paxos">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
 
 ### 活锁和活性
 
@@ -580,6 +598,12 @@ S2 (candidate)                S1, S3 (follower)
 
 如果 S1 的日志在 index 4 处和 leader 不一致，它会拒绝。S2 把 `nextIndex[1]` 往回退，直到找到一个双方都有的前缀，再从那里开始发。论文里还给了快速回退的优化：follower 在拒绝时带上冲突 term 的第一个 index，leader 一次跳过一整个 term，而不是一条一条退。实验的 3B 测试 `TestBackup3B` 专门检查这个回退不能太慢。
 
+把回退和追平的过程走一遍：
+
+<div class="anim" data-anim="raft-replication">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
+
 ### 两条最容易写错的规则
 
 **第一，选举限制。** 候选人不能只看票数，还要看日志。投票者只在“候选人的日志至少和我一样新”时才投票。比较的方法是：先比最后一条日志的 term，term 大的更新；term 相同再比最后一条日志的 index。没有这条规则，一个日志落后的节点可能当选，已经提交的条目就会被覆盖。
@@ -652,6 +676,12 @@ Figure 2 规定，`currentTerm`、`votedFor` 和 `log[]` 改变后、回复远�
 状态机定期写快照，告诉 Raft“这个下标前的状态已包含”；Raft 截断日志，只留快照后的条目。`lastIncludedIndex` 是最后一个被包含的下标，不是下一个日志下标，`lastIncludedTerm` 用来支撑后续 `AppendEntries` 的前缀检查。
 
 落后的跟随者（follower）需要 `InstallSnapshot`。leader 发现 `nextIndex[f]` 小于等于自己的 `lastIncludedIndex`，说明要发的日志已经被截掉，于是改发快照。follower 若在快照下标处有相同任期条目，就保留后缀；否则丢弃整条日志，用快照重置状态机，并把 `commitIndex`、`lastApplied` 跳到 `lastIncludedIndex`。lab 用 `applyCh` 把快照交给服务，服务只允许前进；3D 只要求一次 `InstallSnapshot` 发完整快照，不按偏移量（offset）分块，快照要和 Raft 状态一起 `persister.Save()`。
+
+把快照安装和后续复制走一遍：
+
+<div class="anim" data-anim="raft-snapshot">
+<p class="anim-fallback">这个动画需要 JavaScript；正文的步骤说明仍然完整。</p>
+</div>
 
 ### 客户端去重（client deduplication）：一个请求只执行一次
 
