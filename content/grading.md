@@ -4,9 +4,9 @@
 
 | 课程 | 自动评分 | 书面部分 | 通过条件 |
 |---|---|---|---|
-| INFRA 01 | 5 个 lab，各 20 分 | 每个 lab 300 字复盘 | 自动 100 分 + 复盘 |
+| INFRA 01 | 5 个实验，各 20 分 | 每个实验 300 字复盘 | 自动 100 分 + 复盘 |
 | INFRA 02 | CN1 自动检查；CN2–CN5 按任务书验收 | CN5 故障报告 | 必做项通过 |
-| INFRA 03 | 暂无人自动评分；AOS1–Capstone 人工验收 | capstone 报告 | 必做项通过 |
+| INFRA 03 | 暂不提供自动评分；AOS1–Capstone 人工验收 | capstone 报告 | 必做项通过 |
 
 ## 怎么跑
 
@@ -16,8 +16,10 @@
 git clone https://github.com/Xio-Shark/infra-systems.git
 cd infra-systems
 ./judge/run.sh --list
-./judge/run.sh infra01 lab1
+LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1
 ```
+
+`LAB_ROOT` 默认是 `~/labs/6.5840`；克隆到别处时显式指定。
 
 INFRA 01 需要你本地的 6.5840 仓库：
 
@@ -39,28 +41,28 @@ INFRA 01 的 `make` 目标默认带 `-race`（MIT Makefile 的 `RACE=-race`）�
 
 ## 评分代码在哪
 
-- `judge/courses/*.json`：lab 列表、权重、超时。
+- `judge/courses/*.json`：实验列表、权重、超时。
 - `judge/tests/<course>/<lab>.sh`：检查项，输出 `CHECK PASS/FAIL` 和 `SCORE`。
 - `judge/contracts/`：提交接口。
-- `judge/README.md`：怎么加一个 lab。
+- `judge/README.md`：怎么加一个实验。
 
 评分规则和测试在 `judge/`；改测试等于改标准。
 
-judge 是本地自测工具，不防作弊：`LAB_ROOT` 指向的 6.5840 Makefile/tester、`judge/tests/` 都能被修改。自动分只作为自检证据；课程通过条件里的“能讲清楚”和复盘不能由它验证。`--all` 是所有可自动检查 lab 的合计，不是单门课分数。
+judge 是本地自测工具，不防作弊：`LAB_ROOT` 指向的 6.5840 Makefile/tester、`judge/tests/` 都能被修改。自动分只作为自检证据；课程通过条件里的“能讲清楚”和复盘不能由它验证。`--all` 是所有可自动检查实验的合计，不是单门课分数。
 
 ## 通过标准
 
 - 必做项全部 PASS（`--quick` 不算）；
 - INFRA 01 的 `make` 默认已带 `-race`；
 - 能不看代码讲清楚机制、失败模式和每个测试在测什么；
-- 每个 lab 写 300 字复盘，按[复盘模板](#reflection)；
+- 每个实验写 300 字复盘，按[复盘模板](#reflection)；
 - 代码私有，不公开可直接复制的答案。
 
 ## 复盘模板 {#reflection}
 
-每个 lab 写 300 字，按下面五问作答，不要写成流水账：
+每个实验写 300 字，按下面五问作答，不要写成流水账：
 
-1. 这个 lab 的核心不变量是什么？你最初误解了哪一条？
+1. 这个实验的核心不变量是什么？你最初误解了哪一条？
 2. 你的设计做了哪些取舍？为什么选它，而不是更简单或更复杂的方案？
 3. 哪个测试最先暴露问题？失败时的现象和根因是什么？
 4. 你修了什么？有没有留下未解释的偶发失败或已知风险？
@@ -74,6 +76,6 @@ judge 是本地自测工具，不防作弊：`LAB_ROOT` 指向的 6.5840 Makefil
 
 ## 没有标准答案
 
-lab 页不给可直接复制的实现；judge 只检查可观察行为，不限制你的设计。
+实验页不给可直接复制的实现；judge 只检查可观察行为，不限制你的设计。
 
 Agent OS 的接口还没冻结，评分标准会随接口调整；以任务书和 `judge/contracts/` 为准。

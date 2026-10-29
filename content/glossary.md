@@ -44,10 +44,13 @@
 | RequestVote | 请求投票 | 候选人拉票的 RPC |
 | AppendEntries | 追加日志 | leader 复制日志/发心跳的 RPC |
 | PrevLogIndex / PrevLogTerm | 前一条日志的索引/任期 | follower 用来检查日志连续性 |
-| commitIndex | 提交索引 | 已知被多数派复制的最大 index |
+| commitIndex | 提交索引 | 已知被多数派复制、且所属 term 等于 currentTerm 的最大 index |
 | lastApplied | 已应用索引 | 已交给状态机的最大 index |
 | nextIndex | 下一条索引 | leader 对每个 follower 维护 |
 | matchIndex | 匹配索引 | 已知 follower 复制到的最大 index |
+| applyCh | 应用通道 | Raft 把已提交条目送给状态机的 channel |
+| persister | 持久化器 | tester 提供的保存/恢复接口，代替磁盘 |
+| porcupine | 线性一致检查器 | 6.5840 用来检查 KV 历史是否线性一致 |
 | election restriction | 选举限制 | 候选人日志必须至少和 voter 一样新 |
 | log compaction | 日志压缩 | 用快照替换旧日志 |
 | snapshot | 快照 | 某个 index 之前的状态序列化 |
@@ -83,7 +86,7 @@
 
 | 英文 | 中文 | 解释 |
 |---|---|---|
-| RSM | 复制状态机 | replicated state machine |
+| RSM | 状态机复制 | replicated state machine；同一份日志按同一顺序应用到每个副本 |
 | shard | 分片 | 把 key 按范围分到不同组 |
 | shard group | 分片组 | 负责一组 shard 的 Raft 集群 |
 | configuration | 配置 | shard → shard group 的映射 |
@@ -136,7 +139,7 @@
 | pause container | pause 容器 | 持有 Pod network namespace 的沙箱容器 |
 | Pod | Pod | Kubernetes 的最小调度单位；多容器共享 netns 和卷 |
 | init container | 初始化容器 | 按顺序执行、必须成功退出的前置容器 |
-| sidecar | 边车 | 和主容器同 Pod、共享网络/卷的辅助容器 |
+| sidecar | 边车（通常直接用 sidecar） | 和主容器同 Pod、共享网络/卷的辅助容器 |
 | ephemeral container | 临时容器 | 用来调试的容器，不能加资源限制 |
 | native sidecar | 原生边车 | 放在 initContainers 里但 `restartPolicy: Always` 的边车 |
 | namespace | 命名空间 | 隔离 PID、mount、net、IPC、UTS、user、cgroup、time 的内核机制 |

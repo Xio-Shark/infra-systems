@@ -1,6 +1,6 @@
 # INFRA 01 · 分布式系统
 
-> 21 lectures + project demos · 5 labs · Go
+> 21 讲 + 项目展示 · 5 个实验 · Go
 >
 > 参考 MIT 6.5840 Spring 2026 的日程。
 
@@ -8,22 +8,22 @@
 
 这门课讨论一个问题：**多个副本如何在对方面前表现得像一台机器？**
 
-课程从 MapReduce 开始，经过 RPC、GFS、Paxos、Raft、线性一致、ZooKeeper、2PC、Spanner、Chain Replication、FaRM、IronFleet、Memcached、Lambda、Ray、SUNDR、Bitcoin，最后到 PBFT。主线不是把论文串起来，而是同一组约束的递进：副本放在哪、谁来写、什么时候算提交、失败后怎么恢复、客户端能看到什么顺序。
+课程从 MapReduce 开始，先讲 RPC、GFS、Paxos、Raft，再进入线性一致、ZooKeeper、2PC、Spanner。后半程看 Chain Replication、FaRM、IronFleet、Memcached、Lambda、Ray、SUNDR、Bitcoin，最后到 PBFT。主线不是把论文串起来，而是同一组约束的递进：副本放在哪、谁来写、什么时候算提交、失败后怎么恢复、客户端能看到什么顺序。
 
-五个 Go lab 把这些约束写成代码：MapReduce、单机 KV、Raft、基于 Raft 的 replicated state machine、分片 KV。Lab 3 是核心，通常需要 2–3 周；Lab 4/5 会复用它。
+五个 Go 实验把这些约束写成代码：MapReduce、单机 KV、Raft、基于 Raft 的 replicated state machine、分片 KV。Lab 3 是核心，通常需要 2–3 周；Lab 4/5 会复用它。
 
 ## 怎么开始
 
 1. 读 [第 1 讲 MapReduce](lectures.html#lec1)。
-2. 打开 [Lab 1 任务书](lab1.html)，按“任务”和“硬性约束”实现。
+2. 打开 [Lab 1](lab1.html)，按“你将完成什么”和“开始之前”做。
 3. 跑 `LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`。
-4. 参考：[MapReduce 论文](papers.html) 和 [官方 lab 页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html)。
+4. 参考：[MapReduce 论文](papers.html) 和 [官方实验页](https://pdos.csail.mit.edu/6.5840/labs/lab-mr.html)。
 
-作业总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。讲义已经覆盖 Lab 1 所需的概念；论文和官方页面是参考，不必先读。
+实验总览在 [作业与实验](labs.html)；评分标准在 [评分标准](grading.html)。讲义覆盖概念和规则，不覆盖 Go plugin、`net/rpc`、Unix socket 这些 API；实现时看 Lab 1 和 `src/` 骨架。论文和官方页面是参考，不必先读。
 
 ## 先修要求
 
-- 会 Go，或愿意在两周内补到能写并发程序。
+- 会 Go，或愿意按下面的清单补两周：goroutine、channel、mutex、`context`、`net/rpc`、`go test`；能写一个带超时和重试的并发程序。
 - 知道进程、线程、锁、文件系统、socket。
 - 不怕调试并发程序；愿意反复跑 `-race` 和 `-count=100`。
 
@@ -81,12 +81,12 @@ Lab 3 是核心；Lab 4/5 复用 Lab 2/3 的代码。时间有限时可以做到
 
 ## 考核
 
-- 本地 judge 通过：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 labN`。
+- 本地 judge 通过：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`（把 `lab1` 换成 `lab2`…`lab5`）。
 - `make ...` 全绿，`-race` 也过。
 - 能不看代码讲清楚协议、失败模式、每个测试在测什么。
-- 每个 lab 写 300 字复盘：问题、设计、失败模式、测试结果；再加一句“如果放进多容器平台或 agent runtime 会怎样”。模板见[评分标准](grading.html#reflection)。
+- 每个实验写 300 字复盘：问题、设计、失败模式、测试结果；再加一句“如果放进多容器平台或 agent runtime 会怎样”。模板见[评分标准](grading.html#reflection)。
 - 代码私有；不公开可直接复制的答案。
 
 ## 阅读
 
-[阅读](papers.html) 有每篇论文的一句话定位和阅读重点。课程页与 lab 原文在 [MIT 6.5840](https://pdos.csail.mit.edu/6.5840/)；[讲义](lectures.html) 是中文导读。另加一篇 *Time, Clocks, and the Ordering of Events*（1978）作为顺序问题的补充。
+[阅读](papers.html) 有每篇论文的一句话定位和阅读重点。课程页与实验原文在 [MIT 6.5840](https://pdos.csail.mit.edu/6.5840/)；[讲义](lectures.html) 是中文导读。另加一篇《时间、时钟与事件排序》（*Time, Clocks, and the Ordering of Events*，1978）作为顺序问题的补充。

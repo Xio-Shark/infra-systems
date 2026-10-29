@@ -10,7 +10,7 @@
 |---|---|---|
 | Linux（Ubuntu 24.04） | 全部课程 | 推荐；VM 或裸机 |
 | WSL2 + Ubuntu 24.04 | 全部课程 | Windows 推荐；需要 systemd + cgroup v2 |
-| macOS | INFRA 01 的 Go lab | 内核实验需要 Linux VM |
+| macOS | INFRA 01 的 Go 实验 | 内核实验需要 Linux VM |
 
 INFRA 02/03 需要 namespace、cgroup v2、mount、overlayfs、seccomp；这些在 WSL2 里通常都有。如果某个特性缺失，用一台 Linux VM，不要改 Windows 宿主。
 
@@ -27,7 +27,15 @@ make mr
 
 `make mr` 在 Lab 1 未实现前会挂住（`Done()` 还是 false），这是预期的；先读 [Lab 1](lab1.html)。
 
-内核实验（INFRA 02/03）需要 Linux VM：OrbStack、UTM 或 Lima 都可以；不要在 macOS 宿主上跑 namespace/cgroup 实验。
+内核实验（INFRA 02/03）需要 Linux VM：OrbStack、UTM 或 Lima 都可以；不要在 macOS 宿主上跑 namespace/cgroup 实验。用 Lima 的话：
+
+```bash
+brew install lima
+limactl start --name=ubuntu template://ubuntu-24.04
+limactl shell ubuntu
+```
+
+OrbStack 和 UTM 的步骤类似：建一台 Ubuntu 24.04，分配 2 vCPU、4 GB 内存、20 GB 磁盘，然后在 VM 里按下一节安装工具。
 
 ## 2. WSL2 安装
 
@@ -54,7 +62,7 @@ wsl --shutdown
 
 ```bash
 uname -r
-stat -fc cgroup2 /sys/fs/cgroup     # 应输出 cgroup2fs
+stat -fc %T /sys/fs/cgroup     # 应输出 cgroup2fs
 sudo unshare -pf --mount-proc /bin/sh     # 应进入新的 PID/mount namespace
 ```
 
@@ -164,12 +172,26 @@ cgroup v2 的基本操作：
 ```bash
 sudo mkdir /sys/fs/cgroup/lab
 cat /sys/fs/cgroup/lab/cgroup.controllers
-# 用一个测试进程，不要把当前 shell 放进 64M 的 cgroup
+echo "+memory +pids" | sudo tee /sys/fs/cgroup/cgroup.subtree_control
+sleep 300 &
+echo $! | sudo tee /sys/fs/cgroup/lab/cgroup.procs
+cat /sys/fs/cgroup/lab/cgroup.procs
+cat /sys/fs/cgroup/lab/memory.events
+kill $!
 ```
 
-如果 `unshare` 报 `Operation not permitted`，确认你在 WSL2/Linux 里、有 root，或 user namespace 没有被发行版禁用。Ubuntu 24.04 对非特权 user namespace 有 AppArmor 限制；在 VM 里调整，不要改宿主。
+`cgroup.subtree_control` 要在父 cgroup 上打开，子组才能限制 memory 和 pids。不要把当前 shell 放进 64M 的 cgroup；用一个测试进程，确认 `cgroup.procs` 里有它，再看 `memory.events` 的 `oom_kill` 计数。
 
-### CN1 rootfs（INFRA 02）
+如果 `unshare` 报 `Operation not permitted`，先确认你在 WSL2/Linux 里、有 root，或 user namespace 没有被发行版禁用：
+
+```bash
+sysctl kernel.apparmor_restrict_unprivileged_userns
+unshare -Ur true
+```
+
+如果第二条也报 `EPERM`，用 root 跑，或换一台 Linux VM。Ubuntu 24.04 对非特权 user namespace 有 AppArmor 限制；在 VM 里调整，不要改宿主。
+
+### CN1 rootfs（INFRA 02） {#cn1-rootfs}
 
 ```bash
 sudo apt install -y busybox-static
@@ -216,7 +238,7 @@ INFRA 01 要求代码私有。建议：
 ```bash
 cd ~/labs/6.5840
 git checkout -b my-labs
-git add ...
+git add -A
 git commit -m "lab1: pass wc"
 ```
 
@@ -225,7 +247,7 @@ git commit -m "lab1: pass wc"
 ## 8. 调试
 
 - `go test -race`：必开；Raft/RSM 的竞态很容易漏。
-- `go test -run TestName -count=100`：重复跑，抓偶发 bug。
+- `cd src/mr && go test -run TestWc -count=100`：在对应包目录里重复跑，抓偶发 bug；Raft 把 `src/mr` 换成 `src/raft1`。
 - `go test -v`：看每个测试的输出。
 - `fmt.Printf` / `log.Printf`：最有效的调试工具；把输出重定向到文件。
 - `dlv`：需要断点时用；不要一上来就单步。
@@ -248,12 +270,12 @@ git commit -m "lab1: pass wc"
 | `unshare: Operation not permitted` | 权限/user namespace | 用 root 或 Linux VM |
 | cgroup v2 没挂载 | WSL2 没启用 systemd | 启用 systemd；否则用 VM |
 | overlayfs 挂载失败 | 文件系统/权限 | 换 Linux VM 或 ext4 路径 |
-| `iptables` 规则不生效 | nftables/iptables 混用 | 安装 `iptables-nft`，或直接用 `nft` |
+| `iptables` 规则不生效 | nftables/iptables 混用 | 安装 `iptables-nft`，跑 `update-alternatives --set iptables /usr/sbin/iptables-nft`，用 `iptables -V` 确认；或直接用 `nft` |
 | `bpftrace` 失败 | 缺内核头文件/BTF | 可选；跳过或用 `strace` |
 
 ## 10. 学习负担
 
 - 每周 8–10 小时；Raft 阶段可以到 12 小时。
-- 每个 lab 先读课程页和 lab 页，再画状态机/时序图，再写代码。
-- 每完成一个 lab，写 300 字：问题、设计、失败模式、测试结果。
-- 不要同时开两个 lab；Raft 的 bug 会污染后面的 lab。
+- 每个实验先读课程页和实验页，再画状态机/时序图，再写代码。
+- 每完成一个实验，写 300 字：问题、设计、失败模式、测试结果。
+- 不要同时开两个实验；Raft 的 bug 会污染后面的实验。

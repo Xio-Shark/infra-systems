@@ -73,6 +73,7 @@ assets/           style.css, app.js
 judge/            local grading scripts, contracts, and test configs
 template.html     Pandoc template
 build.sh          build script
+STYLE.md          writing conventions for content/
 dist/             generated site
 ```
 

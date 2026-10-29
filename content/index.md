@@ -2,17 +2,19 @@
 
 > 三门课：分布式系统、云原生与多容器、Agent OS（探索课）。
 >
-> 实验在单机 Linux 或 WSL2 上运行；2 vCPU、4 GB 内存、20 GB 磁盘即可，不需要 GPU 或多台机器。
+> 实验在单机 Linux 或 WSL2 上运行；2 vCPU、4 GB 内存、20 GB 磁盘即可，不需要 GPU 或多台机器。INFRA 01 也可以在 macOS 上做；INFRA 02/03 需要 Linux VM 或 WSL2。
 
 ## 第一次来
 
-先选一门课，再按课程页的“怎么开始”做第一个作业。第一次来先读[导引](start.html)。
+先选一门课，再按课程页的“怎么开始”做第一个实验。第一次来先读[导引](start.html)。
 
 | 你想学 | 先看 | 第一个作业 | 评分 |
 |---|---|---|---|
 | 分布式、Go、Raft | [INFRA 01](course-map.html) | [Lab 1](lab1.html) | `./judge/run.sh infra01 lab1` |
-| 容器、Kubernetes 底层 | [INFRA 02](cloud-native.html) | [CN1](cloud-native.html#lab-cn1) | `./judge/run.sh infra02 cn1` |
-| agent 与内核（探索） | [INFRA 03](agent-os.html) | [AOS1](agent-os.html#lab-aos1) | 先按任务书自测 |
+| 容器、Kubernetes 底层 | [INFRA 02](cloud-native.html) | [CN1](cn1.html) | `./judge/run.sh infra02 cn1` |
+| agent 与内核（探索） | [INFRA 03](agent-os.html) | [AOS1](aos1.html) | 先按任务书自测 |
+
+CN1 需要 `SUBMISSION` 和 `CN1_ROOTFS` 两个环境变量；完整命令见[环境](setup.html#cn1-rootfs)。没有变量时 judge 显示 `SKIP`，不会假装通过。
 
 课程仓库（含 `judge/`、任务书和全部讲义）：
 
@@ -27,7 +29,7 @@ cd infra-systems
 
 ## 课程说明
 
-INFRA 01 讲多台机器上的副本和共识；INFRA 02 讲一台机器上的容器、网络和存储；INFRA 03 探索 agent 调用工具时，内核应该提供哪些操作。三门课都要回答：**谁在写、什么时候算完成、失败后看到什么。**
+INFRA 01 讨论多台机器上的副本和共识；INFRA 02 讨论一台机器上的容器、网络和存储；INFRA 03 探索 agent 调用工具时，内核应该提供哪些操作。
 
 INFRA 01 读 MapReduce、GFS、Paxos、Raft、Spanner、Ray，写 MapReduce、KV、Raft、RSM、sharded KV。
 
@@ -73,7 +75,7 @@ INFRA 01 和 CN1 有本地评分脚本，放在课程仓库的 `judge/` 目录�
 
 - 评分脚本的必做项通过；
 - 能不看代码讲清楚机制、失败模式和测试在测什么；
-- 能回答课程页的 design questions。
+- 能回答课程页的设计问题。
 
 用法见 [作业与实验](labs.html#judge)。
 
@@ -88,4 +90,4 @@ INFRA 01 和 CN1 有本地评分脚本，放在课程仓库的 `judge/` 目录�
 | 8–10 小时/周（推荐） | 24–30 周：INFRA 01 第 1–8 周；INFRA 02 第 9–16 周；INFRA 03 第 17–26 周；留 2–4 周缓冲 |
 | 15–20 小时/周（冲刺） | 14–18 周：INFRA 01 第 1–6 周；INFRA 02 第 7–11 周；INFRA 03 第 12–17 周 |
 
-14 周表是冲刺路径；按 8–10 小时/周，整套通常要 24–30 周。每个 lab 的粗估工时见[作业与实验](labs.html#hours)。
+冲刺路径是 14–18 周；按 8–10 小时/周，整套通常要 24–30 周。每个实验的粗估工时见[作业与实验](labs.html#hours)。

@@ -4,7 +4,7 @@
 >
 > 论文版权归原作者/出版方所有。
 >
-> 这里的阅读是参考，不是前置。讲义已经覆盖做 lab 所需的概念；每篇的定位和阅读重点，用于做完实验后加深理解，卡住时再查。
+> 这里的阅读是参考，不是前置。讲义已经覆盖做实验所需的概念；每篇的定位和阅读重点，用于做完实验后加深理解，卡住时再查。
 
 ## 怎么读
 
@@ -24,7 +24,7 @@
 - 中间文件怎么命名、怎么原子写。
 - 为什么 map 输出要按 key 分区。
 
-**和 lab 的关系**：Lab 1 就是简化版 MapReduce。
+**和实验的关系**：Lab 1 就是简化版 MapReduce。
 
 ### [GFS (2003)](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) {#gfs}
 
@@ -36,7 +36,7 @@
 - 原子追加（atomic append）的语义。
 - 失败恢复：master 崩溃、chunkserver 崩溃。
 
-**和 lab 的关系**：理解“复制 + 租约 + 失败恢复”的工程取舍；Lab 3 的 Raft 是另一条路线。
+**和实验的关系**：理解“复制 + 租约 + 失败恢复”的工程取舍；Lab 3 的 Raft 是另一条路线。
 
 ### [Paxos (2001) / Paxos Made Simple](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) {#paxos}
 
@@ -47,7 +47,7 @@
 - safety 和 liveness 的区别。
 - 为什么 Paxos 难实现（工程细节多）。
 
-**和 lab 的关系**：Raft 是“更易理解”的 Paxos 变体；对照读更容易懂 Raft。
+**和实验的关系**：Raft 是“更易理解”的 Paxos 变体；对照读更容易懂 Raft。
 
 ### [Raft (2014)](https://raft.github.io/raft.pdf) {#raft}
 
@@ -59,7 +59,7 @@
 - 5.4.2 commit 规则（Figure 8）。
 - 7 节：日志压缩 / snapshot。
 
-**和 lab 的关系**：Lab 3 的全部内容。中文翻译：[raft-zh_cn](https://github.com/maemual/raft-zh_cn)。
+**和实验的关系**：Lab 3 的全部内容。中文翻译：[raft-zh_cn](https://github.com/maemual/raft-zh_cn)。
 
 ### [Time, Clocks, and the Ordering of Events (1978)](https://lamport.azurewebsites.net/pubs/time-clocks.pdf) {#time-clocks}
 
@@ -70,7 +70,7 @@
 - 逻辑时钟怎么更新，为什么不能直接当物理时间用。
 - 物理时钟同步的假设和误差。
 
-**和 lab 的关系**：Raft 的 term、lease 的 epoch、线性一致的 real-time order 都建立在“顺序”上；先理解逻辑顺序，再区分哪些地方必须用物理时间。
+**和实验的关系**：Raft 的 term、lease 的 epoch、线性一致的 real-time order 都建立在“顺序”上；先理解逻辑顺序，再区分哪些地方必须用物理时间。
 
 ### [Linearizability (1990)](https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf) {#linearizability}
 
@@ -81,7 +81,7 @@
 - 可组合性（composability）。
 - 和 serializability 的区别。
 
-**和 lab 的关系**：Lab 2/4 的 KV 服务要求线性一致；测试用 porcupine 检查。
+**和实验的关系**：Lab 2/4 的 KV 服务要求线性一致；测试用 porcupine 检查。
 
 ### [ZooKeeper (2010)](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf) {#zookeeper}
 
@@ -92,7 +92,7 @@
 - watch 的语义和一次性触发。
 - leader election / distributed lock 怎么用 znode 实现。
 
-**和 lab 的关系**：Lab 2 的锁可以用 KV 实现；ZooKeeper 是工业界的版本。
+**和实验的关系**：Lab 2 的锁可以用 KV 实现；ZooKeeper 是工业界的版本。
 
 ### [Spanner (2012)](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) {#spanner}
 
@@ -103,7 +103,7 @@
 - Paxos group + 两阶段提交。
 - 外部一致性（external consistency）的定义。
 
-**和 lab 的关系**：Lab 5 的分片 + 配置变更，是 Spanner 的简化版。
+**和实验的关系**：Lab 5 的分片 + 配置变更，是 Spanner 的简化版。
 
 ### [Chain Replication (2004)](https://www.semanticscholar.org/paper/Chain-Replication-for-Supporting-High-Throughput-Renesse-Schneider/9a091dacf855c1b6a0cd4361194e238fe6e1ff11) {#chain-replication}
 
@@ -114,7 +114,7 @@
 - 失败恢复：head/tail 挂了怎么办。
 - 和 Raft 的取舍：吞吐 vs 可用性。
 
-**和 lab 的关系**：理解复制协议的多样性；Lab 3 是 Raft 路线。
+**和实验的关系**：理解复制协议的多样性；Lab 3 是 Raft 路线。
 
 ### [FaRM (2015)](https://www.microsoft.com/en-us/research/wp-content/uploads/2014/02/aleksandar-dragojevic.pdf) {#farm}
 
@@ -125,7 +125,7 @@
 - RDMA 的 one-sided operations。
 - 为什么需要复制和恢复。
 
-**和 lab 的关系**：Lab 4 的事务/KV 是简化版；FaRM 是性能极限的另一端。
+**和实验的关系**：Lab 4 的事务/KV 是简化版；FaRM 是性能极限的另一端。
 
 ### [IronFleet (2015)](https://www.microsoft.com/en-us/research/publication/ironfleet-proving-practical-distributed-systems-correct/) {#ironfleet}
 
@@ -136,7 +136,7 @@
 - refinement proof 的思路。
 - 验证的代价和边界。
 
-**和 lab 的关系**：提醒你 Raft 的“正确”不是靠测试堆出来的；测试只是抽样。
+**和实验的关系**：提醒你 Raft 的“正确”不是靠测试堆出来的；测试只是抽样。
 
 ### [Memcached at Facebook (2013)](https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf) {#memcached}
 
@@ -147,7 +147,7 @@
 - 为什么尾延迟重要。
 - 多区域部署的取舍。
 
-**和 lab 的关系**：Lab 2 的 lease/版本号思路在大规模系统里的样子。
+**和实验的关系**：Lab 2 的 lease/版本号思路在大规模系统里的样子。
 
 ### [AWS Lambda (2023)](https://arxiv.org/abs/2305.13162) {#lambda}
 
@@ -158,7 +158,7 @@
 - 冷启动的优化（snapshot/restore）。
 - 多租户隔离和安全边界。
 
-**和 lab 的关系**：如果你做 agent runtime 或进程内核，这一篇和隔离/恢复问题很接近。
+**和实验的关系**：如果你做 agent runtime 或进程内核，这一篇和隔离/恢复问题很接近。
 
 ### [Ray (2018)](https://arxiv.org/abs/1712.05889) {#ray}
 
@@ -169,7 +169,7 @@
 - actor 的状态管理。
 - 调度器的取舍。
 
-**和 lab 的关系**：和 agent 任务调度、DAG 执行相关；如果你做 agent runtime，会遇到相似的调度和恢复问题。
+**和实验的关系**：和 agent 任务调度、DAG 执行相关；如果你做 agent runtime，会遇到相似的调度和恢复问题。
 
 ### [SUNDR (2004)](https://www.usenix.org/legacy/event/osdi04/tech/full_papers/li_j/li_j.pdf) {#sundr}
 
@@ -180,7 +180,7 @@
 - 签名链和版本向量。
 - 为什么不能完全防恶意服务器。
 
-**和 lab 的关系**：理解“服务器可能撒谎”时的正确性模型；和 agent 执行审计里的“可验证的执行记录”是同一类问题。
+**和实验的关系**：理解服务器撒谎时的正确性模型；和 agent 执行审计里的“可验证的执行记录”是同一类问题。
 
 ### [Bitcoin (2008)](https://bitcoin.org/bitcoin.pdf) {#bitcoin}
 
@@ -191,7 +191,7 @@
 - 最长链规则和分叉。
 - 双花攻击的边界。
 
-**和 lab 的关系**：和 Raft 对比： crash fault tolerance vs Byzantine fault tolerance。
+**和实验的关系**：和 Raft 对比： crash fault tolerance vs Byzantine fault tolerance。
 
 ### [PBFT (1999)](https://static.usenix.org/events/osdi99/castro.html) {#pbft}
 
@@ -202,7 +202,7 @@
 - 为什么需要 3f+1。
 - 和 Raft（crash fault）的区别。
 
-**和 lab 的关系**：如果你关心“节点可能作恶”，这是入口；课程的 Raft 只处理 crash。
+**和实验的关系**：如果你关心“节点可能作恶”，这是入口；课程的 Raft 只处理 crash。
 
 ### [6.033 Chapter 9（分布式事务）](https://ocw.mit.edu/courses/6-033-computer-system-engineering-spring-2018/resources/mit6_033s18lec9/) {#6033}
 
@@ -213,11 +213,11 @@
 - 协调者崩溃怎么办。
 - 和 Raft/Paxos 的关系。
 
-**和 lab 的关系**：Lab 4/5 的配置变更、shard 迁移涉及原子提交。
+**和实验的关系**：Lab 4/5 的配置变更、shard 迁移涉及原子提交。
 
 ## INFRA 02 · 论文与规范
 
-下面这些不是 6.5840 schedule 上的必读论文，是INFRA 02/03的补充阅读。不要一次读完；每篇写 5 句话：问题、假设、机制、代价、和课程的关系。
+下面这些不是 6.5840 schedule 上的必读论文，是 INFRA 02/03 的补充阅读。不要一次读完；每篇写 5 句话：问题、假设、机制、代价，以及和课程的关系。
 
 ### [Borg (2015)](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/) {#borg}
 
@@ -228,7 +228,7 @@
 - 优先级、配额和抢占怎么一起工作。
 - 大规模集群里，失败是常态而不是异常。
 
-**和课程的关系**：INFRA 02的 Pod、requests/limits、QoS、eviction 都能在 Borg 里看到影子。
+**和课程的关系**：INFRA 02 的 Pod、requests/limits、QoS、eviction 都能在 Borg 里看到影子。
 
 ### [The Tail at Scale (2013)](https://research.google/pubs/the-tail-at-scale/) {#tail-at-scale}
 
@@ -276,7 +276,7 @@
 - 形式验证证明了什么，没证明什么。
 - 微内核的 IPC 开销和设计取舍。
 
-**和课程的关系**：INFRA 03的 capability 模型、微内核 vs 宏内核；你不一定要用 seL4，但要知道“能力原生”的设计长什么样。
+**和课程的关系**：INFRA 03 的 capability 模型、微内核 vs 宏内核；你不一定要用 seL4，但要知道“能力原生”的设计长什么样。
 
 ### [The UNIX Time-Sharing System (1974)](https://people.eecs.berkeley.edu/~brewer/cs262/unix.pdf) {#unix}
 
@@ -287,7 +287,7 @@
 - fork/exec、fd、pipe 的设计。
 - 当年的权限模型假设了什么，今天为什么不够。
 
-**和课程的关系**：INFRA 03要从 Unix 的接口往前走一步；先理解它为什么成功，再讨论它为什么不适合 agent。
+**和课程的关系**：INFRA 03 要从 Unix 的接口往前走一步；先理解它为什么成功，再讨论它为什么不适合 agent。
 
 ### [End-to-End Arguments in System Design (1984)](https://web.mit.edu/Saltzer/www/publications/endtoend/endtoend.pdf) {#e2e}
 
@@ -298,7 +298,7 @@
 - 哪些功能适合放在网络中间，哪些必须放端点。
 - 和“可靠消息”“ exactly-once”这些承诺的关系。
 
-**和课程的关系**：INFRA 01的 RPC 语义、INFRA 02的 sidecar 重试、INFRA 03的审计，都要问“这个保证到底由谁负责”。
+**和课程的关系**：INFRA 01 的 RPC 语义、INFRA 02 的 sidecar 重试、INFRA 03 的审计，都要问“这个保证到底由谁负责”。
 
 ### [Sagas (1987)](https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf) {#sagas}
 
@@ -309,7 +309,7 @@
 - 补偿操作的语义和隔离性。
 - 为什么 saga 不能提供 ACID。
 
-**和课程的关系**：INFRA 03第 6 讲的事务与补偿；多容器/多 agent 的跨服务操作。
+**和课程的关系**：INFRA 03 第 6 讲的事务与补偿；多容器/多 agent 的跨服务操作。
 
 ### [AIOS: LLM Agent Operating System (2024)](https://arxiv.org/abs/2403.16971) {#aios}
 
@@ -350,5 +350,7 @@
 4. [GFS](#gfs) / [Paxos](#paxos) / [ZooKeeper](#zookeeper) → 理解复制和协调的多样性。
 5. [Spanner](#spanner) / [Chain Replication](#chain-replication) / [FaRM](#farm) → 看工业界怎么组合这些原语。
 6. [AWS Lambda](#lambda) / [Ray](#ray) → 看分布式系统在 serverless / ML 场景的形态。
+
+INFRA 02 可以按 OCI Runtime Spec → Pod Lifecycle → CNI Spec → CSI Spec → Borg/Firecracker 的顺序读；INFRA 03 按 Unix → seL4/gVisor → AIOS → Saga → End-to-End Arguments 的顺序读。规范只查需要的章节，不要从头读到尾。
 
 不要为了“读完”而读；每篇读完写 5 句话，比读十篇更有用。
