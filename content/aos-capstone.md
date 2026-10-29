@@ -8,7 +8,7 @@
 
 ## 你将完成什么
 
-Capstone 不做一个“全能 agent 平台”，只做一个能证明原子性、权限边界和证据的最小系统。它包含一个 Unix socket daemon，暴露 10 个类型化操作；一个脚本化 planner 调用它完成多步骤任务；一套混沌测试；一份 10 页以内的报告。端到端场景建议选“改一个 Markdown 文件、跑一次链接检查、提交一个 artifact”，全程离线，不接真实凭证和生产 API。
+Capstone 不做一个“全能 agent 平台”，只做一个能证明原子性、权限边界和证据的最小系统：一个 Unix socket daemon，暴露 10 个类型化操作；一个脚本化 planner 调用它完成多步骤任务；一套混沌测试；一份 10 页以内的报告。端到端场景建议选“改 Markdown、跑链接检查、提交 artifact”，全程离线，不接真实凭证。
 
 最终 demo 能重复跑出同一结果：
 
@@ -18,7 +18,7 @@ cd ~/labs/aos-capstone
 ./chaos/run.sh --seed 7
 ```
 
-第一条输出任务 ID、每步的 `status`、最终 manifest hash 和 `audit_id`；第二条跑完混沌矩阵，失败场景也要有结构化错误和证据，不能靠“重跑一次就好了”。验收看四件事：原子性是否真的成立、权限是否真的限制住、失败是否可解释、证据是否可验证。
+第一条输出任务 ID、每步的 `status`、最终 manifest hash 和 `audit_id`；第二条跑完混沌矩阵，失败场景也要有结构化错误和证据。验收看四件事：原子性是否真的成立、权限是否真的限制住、失败是否可解释、证据是否可验证。
 
 ## 开始之前
 
@@ -37,10 +37,13 @@ cd ~/labs/aos-capstone
   internal/audit/      # append-only、hash chain、query、replay
   planner/             # 脚本化 planner，不用真模型也能跑
   chaos/               # 故障注入和断言
+  tools/audit-verify   # 独立验证器
   demo/                # 10 分钟演示脚本
 ```
 
-时间预算 20–30 小时。不要先写报告；每完成一个里程碑就把该性质对应的测试和原始输出存到 `runs/<seed>/`，否则最后拼不出证据。
+`abi` 信封、`audit` 字段名、`rename` + `fsync` 顺序不要改；混沌测试只从外部注入，不直接改内部状态。
+
+时间预算 20–30 小时。不要先写报告；每个里程碑的测试和原始输出存到 `runs/<seed>/`，否则最后拼不出证据。
 
 ## 操作表：先定 10 个，再删
 
@@ -58,6 +61,8 @@ cd ~/labs/aos-capstone
 | 8 | `snapshot.restore` | 版本目录 + symlink `rename` | 读者看到半版本 | 新 hash、旧版本保留 |
 | 9 | `lease.acquire` | lease 服务 + 持久 epoch | 双主、epoch 回退 | epoch、`fenced` 记录 |
 | 10 | `audit.query` | append-only + hash chain | 链断、尾部截断 | `verified_until`、首个坏 `seq` |
+
+`lease.renew` 作为 `lease.acquire` 的 heartbeat 子路径，不单列；拆出去就变成第 11 个操作，超出上限。
 
 数据流只有一条主路径：
 
@@ -104,7 +109,7 @@ planner ──unix socket──> aosd
 
 ### M4：快照和恢复
 
-只加 `snapshot.create`/`restore`。从同一基线开三个分支，各改不同文件；用 freeze + `fsync` 做一致快照，对比直接复制。恢复用版本目录 + symlink 切换，旧版本延迟清理。
+只加 `snapshot.create`/`snapshot.restore`。从同一基线开三个分支，各改不同文件；用 freeze + `fsync` 做一致快照，对比直接复制。恢复用版本目录 + symlink 切换，旧版本延迟清理。
 
 通过标志：三个分支互不污染；restore 后 hash 正确；报告列出至少 6 类不能快照的状态，尤其是 fd、socket、cgroup、时钟和外部副作用。
 
@@ -112,7 +117,7 @@ planner ──unix socket──> aosd
 
 只加 `lease.acquire` 和写路径的 epoch 检查。epoch 按 workspace 持久化、单调递增；存储端记住 `max_epoch`，低于它的写返回 `fenced`。用 `SIGSTOP` 暂停旧 owner，等 TTL 过期，让新 owner 接管，再恢复旧 owner。
 
-通过标志：20 次双主场景里旧 owner 一次都写不进去；lease 服务重启后 epoch 不回退。
+通过标志：20 次双主场景里旧 owner 一次都写不进去；租约服务重启后 epoch 不回退。
 
 ### M6：审计和重放
 
@@ -133,7 +138,7 @@ planner ──unix socket──> aosd
 | `kill -9` daemon | commit 的 `rename` 前后 | 旧或新，不混合 | 重启后 manifest/hash |
 | `kill -9` daemon | 审计 append/`fsync` 前后 | 事件完整或不存在，无半条 | `verify` 首个坏 `seq` |
 | 重复请求 | 客户端超时后重发 | 同幂等键只一次效果 | 两次响应、`effects` 一条 |
-| 两个 agent | 无 lease 并发 commit | 一个成功或串行化 | `fenced`/`conflict` 记录 |
+| 两个 agent | 无租约并发 commit | 一个成功或串行化 | `fenced`/`conflict` 记录 |
 | lease 过期 + `SIGCONT` | 旧 owner 恢复 | 旧写被拒 | `max_epoch` |
 | 权限逃逸 | `..`、symlink、`/proc/self/fd`、bind mount | 全部 `denied` | 审计中的拒绝事件 |
 | 孤儿进程 | `setsid`、双 fork | `terminate` 后 `populated=0` | `cgroup.events`、`waitid` |
@@ -161,7 +166,7 @@ planner ──unix socket──> aosd
 |---|---|---|
 | 10 个操作都是 shell 包装 | 没有原子性来源，只是换了个名字 | 每个操作写清“哪个内核原语保证” |
 | 审计里只有模型说“完成了” | 记录的是自述，不是系统调用或文件变更 | 记录 `execve`、commit、fence 拒绝等内核侧事件 |
-| 双主场景偶尔失败 | lease 只在客户端检查 | 把 epoch 检查放进存储端临界区 |
+| 旧 owner 偶发写成功 | 租约只在客户端检查 | 把 epoch 检查放进存储端临界区 |
 | 混沌测试都通过 | 只测了操作前后，没测中间窗口 | 在 `rename`、`fsync`、manifest 切换前后各注入一次 |
 | 报告像 README | 列功能，没有可证伪的性质 | 每条主张配测试、证据和未证明部分 |
 | demo 依赖网络 | 外部 API 一断就演不了 | 用 fake tool，离线跑完 |
@@ -191,7 +196,7 @@ strace -ff -tt -e trace=clone,clone3,execve,openat,renameat2,fsync,pidfd_open,pi
 审计对不上，先跑独立验证器，不要相信 daemon 自己的 `verify`：
 
 ```bash
-./audit-verify runs/7/audit.jsonl
+./tools/audit-verify runs/7/audit.jsonl
 # first bad seq: 42 (prev_hash mismatch)
 ```
 
@@ -219,7 +224,7 @@ cat "$CGROUP/cgroup.procs"
 
 1. 如果 daemon 在 manifest `fsync` 之后、`rename` 之前崩溃，重启后应该看到哪个版本？为什么？
 2. `exec` 为什么做不到严格的 exactly-once？幂等键覆盖的是哪一层？
-3. lease 服务丢掉 epoch 计数器会发生什么？你怎么在系统层面防住？
+3. 租约服务丢掉 epoch 计数器会发生什么？你怎么在系统层面防住？
 4. 快照恢复后，哪些状态一定回不来？agent 怎么知道要重连？
 5. 哪条混沌测试能抓住“commit 只对单文件原子”的实现？
 

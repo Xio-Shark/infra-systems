@@ -10,7 +10,7 @@
 
 ## 你将完成什么
 
-这个实验做完，你会有一个能对工作区拍快照、切分支、原子恢复的 daemon，并且能说清楚一次“恢复”到底恢复了什么。最小验收是三条命令：
+做完后，你会有一个能拍快照、切分支、原子恢复的 daemon，并且能说清楚一次“恢复”到底恢复了什么。最小验收是三条命令：
 
 ```bash
 cd ~/labs/aos4
@@ -19,7 +19,7 @@ cd ~/labs/aos4
 ./aos4 snapshot restore --workspace ws --id s1
 ```
 
-`create` 返回 `snapshot_id`、`parent`、`manifest_hash` 和 `gaps`；`list` 按创建顺序列出快照；`restore` 返回新的 `workspace_version` 和 `manifest_hash`。跑完之后，`sha256sum` 的文件树要和快照记录一致，正在读旧版本的进程不会读到半个文件。
+`create` 返回 `snapshot_id`、`parent`、`tree_sha256` 和 `gaps`；`list` 按创建顺序列出快照；`restore` 返回新的 `version` 和 `tree_sha256`。跑完后，`sha256sum` 的文件树要和快照记录一致，读旧版本的进程不会看到半个文件。
 
 分清两种快照，比复制目录更重要：文件快照保存目录树、文件内容、权限和扩展属性；进程/内核状态快照保存地址空间、寄存器、fd 表、socket、cgroup 归属和时钟。前者便宜、可移植；后者昂贵、边界多。课程只要求把文件快照做对，进程快照作为选做，并且必须在报告里列出漏掉的状态。
 
@@ -44,7 +44,8 @@ cp --reflink=always base.img clone.img && echo reflink-ok || echo reflink-unsupp
 
 ```text
 ~/labs/aos4/
-  cmd/aosd/            # AOS1 入口
+  cmd/aosd/            # AOS1 daemon
+  cmd/aos4/            # CLI
   internal/abi/        # 类型；本实验加 snapshot/restore/list
   internal/workspace/  # manifest、版本、原子切换
   internal/snapshot/   # 快照后端
@@ -67,11 +68,11 @@ cp --reflink=always base.img clone.img && echo reflink-ok || echo reflink-unsupp
 | fd 表、fd offset、flags | 无 | 有 | 文件快照只保存文件名，不保存“谁开着它” |
 | socket、管道、epoll | 无 | 部分 | 外部 TCP 连接通常不能迁移 |
 | cgroup 归属、资源限制 | 无 | 有 | 恢复后要重新放回 cgroup |
-| 时钟、deadline、随机种子 | 无 | 有 | `CLOCK_MONOTONIC` 不能跨恢复 |
+| 时钟、deadline、随机种子 | 无 | 部分 | `CLOCK_MONOTONIC` 不能跨恢复 |
 | 租约、epoch、审计游标 | 无 | 无 | 属于外部协调状态，见 AOS5 |
 | 已发出的 HTTP 请求、扣款、消息 | 无 | 无 | 只能靠事务日志和补偿 |
 
-最后三行是“不能快照”的部分。文件快照恢复后，进程内存里的缓存、打开的 fd、socket 连接都还是旧的；agent 如果直接复用这些对象，会写到一个已经过期的世界里。恢复后要重新 `open` 工作区、重新建立连接、重新申请 lease，并把这一步写进 `restore` 的返回值和审计。
+最后两行是“不能快照”的部分。文件快照恢复后，进程内存里的缓存、打开的 fd、socket 连接都还是旧的；agent 如果直接复用这些对象，会写到一个已经过期的世界里。恢复后要重新 `open` 工作区、重新建立连接、重新申请 lease，并把这一步写进 `restore` 的返回值和审计。
 
 `fork_context` 常被当成“轻量快照”。`fork` 的 CoW 只共享用户态页；fd 表是复制引用，socket 仍是内核对象，cgroup 归属是继承，POSIX 定时器和进程 CPU 时钟不会继承。它适合分叉思考分支，不适合当崩溃恢复的检查点。
 
@@ -81,16 +82,16 @@ cp --reflink=always base.img clone.img && echo reflink-ok || echo reflink-unsupp
 
 ```go
 type Snapshot struct {
-    ID           string    // s1, s2, ...
+    ID           string    // s1, s2
     Parent       string    // 空表示从基线创建
     Kind         string    // "files" 或 "files+freeze"
     CreatedAt    time.Time
-    ManifestHash string
+    TreeSHA256   string
     Gaps         []string  // 明确列出的未快照状态
 }
 
 CreateSnapshot(workspace, parent, kind string) (Snapshot, error)
-Restore(workspace, id string) (version int, manifestHash string, err error)
+Restore(workspace, id string) (version int, treeSHA256 string, err error)
 List(workspace string) ([]Snapshot, error)
 ```
 
@@ -127,21 +128,21 @@ agent        daemon              cgroup            fs
 
 ### 阶段 1：先让文件快照可验证
 
-只加记录 manifest 这件事。遍历工作区，对每个普通文件记录相对路径、大小、模式、`sha256`；对目录记录模式；把清单写成 `manifest.json`，再对它算 `manifest_hash`。快照本体可以先用普通复制，慢但正确。
+只加记录 manifest 这件事。遍历工作区，对每个普通文件记录相对路径、大小、模式、`sha256`；对目录记录模式；把清单写成 `manifest.json`，再对文件树算 `tree_sha256`。快照本体可以先用普通复制，慢但正确。
 
 跑：
 
 ```bash
 cd ~/labs/aos4
 ./aos4 snapshot create --workspace ws --id s1
-jq -r '.result.manifest_hash' /tmp/aos4/s1/reply.json
+jq -r '.result.tree_sha256' /tmp/aos4/s1/reply.json
 ```
 
 预期是一个 64 位十六进制串。通过标志：`manifest.json` 能独立重算出同一个 hash；删掉一个文件后 hash 必须变化。
 
 ### 阶段 2：把复制换成 overlayfs 或 reflink
 
-换后端，不改接口。reflink 后端逐文件调用 `FICLONE`，失败回退普通复制并记入 `gaps`。overlayfs 后端快照的是 `upperdir`：把它复制或 reflink 成 `snapshots/<id>/upper`，lower 基线保持只读；恢复时用这份 upper 重新挂载。
+换后端，不改接口。reflink 后端逐文件调用 `FICLONE`，失败回退普通复制并记入 `gaps`。overlayfs 后端快照的是 `upperdir`：把它复制或 reflink 成 `snapshots/<id>/upper`，lower 保持只读；恢复时复制成新 upper，快照不动。
 
 注意 overlayfs 的限制：同一个 `upperdir` 或 `workdir` 不能被两个挂载同时使用，否则 `mount` 返回 `EBUSY`；`lowerdir` 可以是另一个 overlayfs，但 whiteout 和 `overlay.*` xattr 在嵌套时要转义。只复制 `upperdir` 时要保留 whiteout 和 xattr，否则重新挂到原 lower 上，删掉的文件会复活；压平 merged 视图会丢掉层关系。
 
@@ -152,11 +153,11 @@ jq -r '.result.manifest_hash' /tmp/aos4/s1/reply.json
 ./aos4 snapshot list --workspace ws
 ```
 
-预期 `s2` 的 `parent` 是 `s1`。通过标志：改 `s1` 的工作区不影响 `s2`；`s2` 删掉的文件从 `s1` 恢复后仍在。
+预期 `s2` 的 `parent` 是 `s1`。通过标志：从 `s1` 恢复后改文件不影响 `s2`；`s2` 删掉的文件从 `s1` 恢复后仍在。
 
 ### 阶段 3：恢复要原子，读者不能看到半个版本
 
-加“版本目录 + symlink 切换”。restore 用快照 upper 挂成 `versions/vN`，校验 manifest，再 `rename` 一个临时 symlink 到 `current`。旧版本目录保留，等读者关闭后再清理。
+加“版本目录 + symlink 切换”。restore 用快照 upper 的副本挂成 `gen/N`，校验 manifest，再 `rename` 一个临时 symlink 到 `current`。旧版本目录保留，等读者关闭后再清理。
 
 跑一个持续读的进程：
 
@@ -218,7 +219,7 @@ cd ~/labs/aos4
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `mount: ... EBUSY` | 同一个 `upperdir`/`workdir` 被两个 overlay 挂载使用 | 每次快照新建 upper/work，不复用 |
+| `mount` 返回 `EBUSY` | 同一个 `upperdir`/`workdir` 被两个 overlay 挂载使用 | 每次快照新建 upper/work，不复用 |
 | `cp --reflink=always` 失败 | ext4 不支持 reflink，或跨文件系统 | 捕获错误回退普通复制，在 `gaps` 记录 |
 | 快照 hash 对不上 | writer 还在跑，或漏了 `fsync` 目录 | 先确认 `frozen 1`，再 `fsync` 文件和父目录 |
 | 恢复后删掉的文件又出现 | 只复制 upperdir，丢了 whiteout/xattr | 保留 whiteout 和 xattr，或用压平视图重建基线 |
@@ -237,9 +238,9 @@ mount | grep overlay
 dmesg | tail -20
 ```
 
-`findmnt` 的 `FSTYPE` 是 `overlay` 还是 `ext4`，决定了你该看 whiteout 还是 reflink。`dmesg` 里的 `overlayfs: ...` 通常比应用层错误信息更直接。
+`findmnt` 的 `FSTYPE` 是 `overlay` 还是 `ext4`，决定了你该看 whiteout 还是 reflink。`dmesg` 里 `overlayfs:` 开头的行通常比应用层错误信息更直接。
 
-reflink 是否生效，不要用 `du` 判断：它把共享块算到每个文件头上。用 `filefrag -v` 看 shared 标志，或比较 `df` 增量；不同 e2fsprogs 版本的输出格式。
+reflink 是否生效，不要用 `du` 判断：它把共享块算到每个文件头上。用 `filefrag -v` 看 shared 标志，或比较 `df` 增量；不同 e2fsprogs 版本的输出格式随版本而异。
 
 冻结是否完成，只看 `cgroup.events`：
 
