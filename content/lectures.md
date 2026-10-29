@@ -100,7 +100,7 @@ Lab 1 就是这套东西的简化版：Unix socket 上的 RPC、`nReduce` 个中
 
 ### 一次调用经过哪些人
 
-一次 RPC 有客户端（client）、服务端（server）和两边的 RPC 库。客户端调用的是存根（stub），存根把参数序列化成请求，交给网络；服务端收到请求后，调度器（dispatcher）按方法名找到处理函数（handler），并通常为每个请求启动一个协程（goroutine）。handler 读写共享状态，回复再沿原路返回。Go 的 `net/rpc` 只导出首字母大写的字段，跨网络的参数和回复都要按这个规则定义。
+一次 RPC 有客户端（client）、服务端（server）和两边的 RPC 库。客户端调用的是存根（stub），存根把参数序列化成请求，交给网络；服务端收到请求后，调度器（dispatcher）按方法名找到处理函数（handler），并通常为每个请求启动一个协程（goroutine）。handler 读写共享状态，回复再沿原路返回。Go 的 `net/rpc` 只序列化首字母大写的字段，跨网络的参数和回复都要按这个规则定义。
 
 ```text
 client                    server
@@ -118,13 +118,13 @@ client                    server
 
 至少一次（at-least-once）：客户端超时就重发，直到收到回复。实现最简单，代价是重复副作用。上面的 `Put` 就是例子；如果操作幂等（idempotent），重复执行没有坏处，至少一次就够。
 
-最多一次（at-most-once）：服务端保证同一个请求最多执行一次。做法有两种。第一种是去重表：请求带唯一 ID，服务端记住“这个 ID 已执行，结果是 X”；崩溃重启后表还在，才能继续保证。第二种是把请求变成条件操作，Lab 2 的版本号就是这种：`Put(key, value, expectedVersion)` 只在版本匹配时更新并把版本加一，重发的请求带着同一个旧版本，自然不会再执行。
+最多一次（at-most-once）：服务端保证同一个请求最多执行一次。做法有两种。第一种是去重表：请求带唯一 ID，服务端记住“这个 ID 已执行，结果是 X”；崩溃重启后表还在，才能继续保证。第二种是把请求变成条件操作，Lab 2 的版本号就是这种：`Put(key, value, expectedVersion)` 只在版本匹配时更新并把版本加一，重发的请求带着同一个旧版本，自然不会再执行。Go 的 `net/rpc` 不做应用层重发，库这一层就是 at-most-once；但客户端仍可能不知道服务端有没有执行。
 
 恰好一次（exactly-once）：效果恰好一次。它通常等于“最多一次”加上“客户端最终知道结果”，去重状态必须持久化，还要处理“执行了但回复丢了”的窗口。代价不只是内存，还有崩溃恢复和垃圾回收；不要把它当成默认语义。
 
 ### 版本号怎么替代去重表
 
-以 Lab 2 为例，键（key）`x` 不存在，当前版本是 0。
+以 Lab 2 为例，键（key）`x` 不存在，当前版本是 0。下面看一次回复丢失会怎样。
 
 1. 客户端 A 发 `Put("x", 10, 0)`。服务端检查版本 0 匹配，写入 10，版本变成 1，准备回复。
 2. 回复在网络上丢失。A 超时，用同一个参数重发 `Put("x", 10, 0)`。
@@ -155,7 +155,7 @@ channel 适合传递所有权和取消信号，mutex 适合保护一张共享表
 
 Lab 1 的 `mr/worker.go` 里，`call()` 发 `Ask` 和 `Report`；coordinator 的任务表要用锁保护，`Ask` 只做分配，超时扫描在后台把运行中超过 10 秒的任务改回空闲（idle）。`TestCrashWorker` 会反复杀 worker，`TestJobCount` 会检查没有崩溃时 map 任务不被重复调度。map 输出先写临时文件再 `rename`，是为了让重复执行和晚到报告不会留下半个文件。
 
-Lab 2 的 `Clerk.Put` 在失败时重发同一个版本，`KVServer.Put` 在锁内比较版本并更新；`TestUnreliableNet` 用丢包和重排验证这条路径。Lab 3 的每个 RPC handler 也在独立 goroutine 里跑，`RequestVote` 和 `AppendEntries` 都要先拿锁再读状态；持锁发 RPC 是 3A/3B 最常见的超时原因。
+Lab 2 的 `Clerk.Put` 在失败时重发同一个版本，`KVServer.Put` 在锁内比较版本并更新；`TestUnreliableNet` 用丢包和重排验证这条路径。Lab 3 的每个 RPC handler 也在独立 goroutine 里跑，`RequestVote` 和 `AppendEntries` 都要先拿锁再读状态；持锁发 RPC 是 3A/3B 常见的超时原因。
 
 ### 检查一下自己
 
@@ -181,23 +181,23 @@ Lab 2 的 `Clerk.Put` 在失败时重发同一个版本，`KVServer.Put` 在锁�
 
 ### 一次只写了一半的失败
 
-客户端往某个 chunk 的偏移量（offset）0 写 1 MB。主副本写本地成功，第二个副本超时，主副本向客户端返回错误。几秒后，读主副本的客户端看到新数据，读第二个副本的客户端看到旧数据。GFS 没有坏，它只是把这种失败后的区域定义成不一致（inconsistent）。要理解 GFS，先要接受“成功”和“失败”不是全局瞬间，而是相对于某个副本和某个租约。
+客户端往某个 chunk 的偏移量（offset）0 写 1 MB。主副本写本地成功，第二个副本超时，主副本向客户端返回错误。几秒后，读主副本的客户端看到新数据，读第二个副本的客户端看到旧数据。GFS 没坏，只是把这种失败后的区域定义成不一致（inconsistent）。要理解 GFS，先要接受“成功”和“失败”不是全局瞬间，而是相对于某个副本和某个租约。
 
 ### 谁存名字，谁存字节
 
 GFS 有三个角色：客户端（client）、主节点（master，课程笔记里也叫 coordinator）、数据块服务器（chunkserver）。文件被切成固定大小的数据块（chunk），默认 64 MB；每个 chunk 默认存 3 个副本（replica）。master 保存元数据（metadata）：命名空间、文件到 chunk 的映射、chunk 位置和版本号（version）。chunkserver 存真正的字节，每个 chunk 在本地就是一个 Linux 文件。
 
-master 的元数据全在内存里，命名空间和文件到 chunk 的映射写进操作日志（operation log），先落盘再复制到远端，回复客户端前必须刷盘。chunk 位置不持久化，master 启动时直接问 chunkserver。这样 master 不用维护过期位置表，代价是启动慢些。
+master 的元数据全在内存里，命名空间和文件到 chunk 的映射写进操作日志（operation log），落盘并复制到远端，回复客户端前必须刷盘。chunk 位置不持久化，master 启动时问 chunkserver。这样 master 不用维护位置表，代价是启动慢。
 
 ### 写一个 chunk 的七步
 
-读路径很短：客户端把文件名和偏移量发给 master，master 返回 chunk 句柄（chunk handle）和副本位置；客户端缓存，之后直接找最近的 chunkserver 读。数据不经过 master，所以 master 不是带宽瓶颈。
+读路径短：客户端把文件名和偏移量发给 master，master 返回 chunk 句柄（chunk handle）和副本位置；客户端缓存，之后直接找最近的 chunkserver 读。数据不经过 master，所以 master 不是带宽瓶颈。
 
-写路径要先选出一个主副本（primary），其余是从副本（secondary）。master 给 chunk 发租约（lease），拿到租约的副本就是 primary。租约初始 60 秒，primary 可通过心跳续租，master 通常批准；想换 primary 时不续租，等旧租约过期。
+写路径先选一个主副本（primary），其余是从副本（secondary）。master 给 chunk 发租约（lease），拿到租约的副本就是 primary。租约初始 60 秒，primary 可通过心跳续租，master 通常批准；想换 primary 时不续租，等旧租约过期。
 
-1. 客户端问 master：这个 offset 属于哪个 chunk，谁持有租约，副本在哪。
+1. 客户端问 master：这个偏移量属于哪个 chunk，谁持有租约，副本在哪。
 2. master 返回 primary 和 secondary 列表；客户端缓存。
-3. 客户端把数据推给所有副本，副本先放进内部缓存，不急着写盘。
+3. 客户端沿链把数据推给所有副本，副本先放进内部缓存，不急着写盘。
 4. 数据全部到达后，客户端向 primary 发写请求。
 5. primary 给这个写分配连续序号，按序写本地，再转发给所有 secondary。
 6. secondary 按同一序号应用写，回复 primary。
@@ -219,13 +219,13 @@ master 的元数据全在内存里，命名空间和文件到 chunk 的映射写
 
 GFS 的一致性不是线性一致。它把一次写之后的文件区域分成三种状态。
 
-已定义（defined）：串行成功的写，所有客户端都会看到这次写写入的完整内容，它一定也一致。
+已定义（defined）：串行成功的写。所有客户端都会看到这次写的完整内容，它一定一致。
 
 一致但未定义（consistent but undefined）：并发成功的写。所有副本字节相同，客户端看到的内容也相同，但这份内容可能是多次写拼出来的，不对应任何一次完整写。课程笔记的例子：C1 写 `ab`，C2 写 `xy`，两个写覆盖的范围重叠，所有副本都可能看到 `xb`。
 
-不一致（inconsistent）：失败的写。primary 可能已写本地，部分 secondary 没写；不同客户端读不同副本，可能看到不同数据。客户端重试成功，才把区域带回已定义。
+不一致（inconsistent）：失败的写。primary 可能已写本地，部分 secondary 没写；不同客户端读不同副本，数据可能不同。客户端重试成功，区域才可能回到已定义。
 
-记录追加（record append）里，客户端只给数据，primary 选偏移量。GFS 保证至少写一次，可能重复或留下填充（padding）；成功记录已定义，填充和重复记录算不一致，应用靠校验和与记录 ID 过滤。
+记录追加（record append）里，客户端只给数据，primary 选偏移量。GFS 保证至少写一次，可能重复或留下填充（padding）；成功记录的区域已定义，填充和重复记录算不一致，应用靠校验和与记录 ID 过滤。
 
 ### 租约为什么不能省
 
@@ -235,26 +235,26 @@ master 分不清 primary 是崩溃了，还是只是网络断了。如果它直�
 
 ### 边界和坏掉的样子
 
-- 单 master 的 CPU 和内存是上限。小文件太多，元数据会撑爆内存，master 扫描也变慢。
-- 热点 chunk：大量客户端同时读同一个 chunk，少数 chunkserver 被打满；GFS 用更高副本数和错开启动缓解，但没有根治。
-- 客户端缓存了旧位置，可能在过期前读到过期副本（stale replica）；master 不会把过期副本发给新请求，但管不了旧缓存。
-- master 崩溃：操作日志要能回放，检查点（checkpoint）之后的日志不能丢；原论文的 master 切换并不完全自动。
-- chunk 很大，恢复一个坏盘要复制很多数据；副本长期缺失时，再坏一个就可能丢 chunk。
+- 单 master 的 CPU 和内存是上限。小文件太多会撑爆元数据内存，master 扫描也变慢。
+- 热点 chunk：大量客户端同时读同一个 chunk，少数 chunkserver 被打满；更高副本数和错开启动只缓解。
+- 客户端缓存旧位置，可能读到过期副本（stale replica）；master 不会把过期副本发给新请求，但管不了旧缓存。
+- master 崩溃：操作日志要能回放，检查点（checkpoint）后的日志不能丢；原论文的 master 切换不完全自动。
+- chunk 很大，恢复坏盘要复制很多数据；副本长期缺失时，再坏一个就可能丢 chunk。
 
 ### 回到 Lab 1、Lab 2 和 Lab 3
 
-Lab 1 的 `mr-X-Y` 先写临时文件再 `rename`，对应 GFS 的“失败后重试，读者不能看到半个文件”；`TestCrashWorker` 检查崩溃后的重跑，`TestJobCount` 检查没有崩溃时不会重复调度。Lab 1 的工作进程（worker）共享文件系统，map 输出不用复制；GFS 的 chunkserver 各有磁盘，必须复制。
+Lab 1 的 `mr-X-Y` 先写临时文件再 `rename`，对应 GFS 的“失败重试，读者不能看到半个文件”；`TestCrashWorker` 检查崩溃重跑，`TestJobCount` 检查无崩溃时不重复发。Lab 1 的工作进程（worker）共享文件系统，map 输出不用复制；GFS 的 chunkserver 各有磁盘，要复制。
 
-Lab 2 的 `Put` 用版本号拒绝过期写，和 GFS 用 chunk version 识别过期副本是同一类思路；差别是 Lab 2 只有一个服务端，版本比较加锁就能给出线性一致，GFS 有多个副本和租约，只给出弱一致表。`TestUnreliableNet` 验证重发不会写两次，对应 GFS 客户端失败后重试写的场景。
+Lab 2 的 `Put` 用版本号拒绝过期写，和 GFS 用 chunk 版本号识别过期副本是同一类思路。差别是 Lab 2 只有一个服务端，版本比较加锁就能线性一致；GFS 有多个副本和租约，只给弱一致。`TestUnreliableNet` 验证重发不会写两次，对应 GFS 客户端失败重试写的场景。
 
-Lab 3 的 Raft 用选举出的领导者（leader）和多数派复制取代租约 primary。GFS 的 primary 靠租约避免脑裂，Raft 的 leader 靠任期（term）和多数票避免脑裂；`TestBackup3B` 检查跟随者（follower）日志冲突时能回退并补齐，相当于 GFS 副本落后后的修复，但 Raft 要求多数派确认后才提交。
+Lab 3 的 Raft 用选举出的领导者（leader）和多数派复制取代租约 primary。GFS 靠租约避免脑裂，Raft 靠任期（term）和多数票避免脑裂；`TestBackup3B` 检查跟随者（follower）日志冲突时回退补齐，相当于 GFS 副本修复，但 Raft 要多数派确认才提交。
 
 ### 检查一下自己
 
 1. 为什么客户端要先把数据推给所有副本，再向 primary 发写请求？
 2. 租约解决什么问题？没有租约，master 换 primary 时会发生什么？
 3. 已定义、一致但未定义、不一致，各举一个例子。
-4. record append 为什么可能重复？应用怎么处理重复和 padding？
+4. 记录追加为什么可能重复？应用怎么处理重复和填充？
 5. master 为什么不持久化 chunk 位置？
 
 ### 答案要点
@@ -262,7 +262,7 @@ Lab 3 的 Raft 用选举出的领导者（leader）和多数派复制取代租�
 1. 把数据流和控制流分开：数据按拓扑沿链传输，primary 只排序，不用中转大块数据；所有副本先拿到数据，primary 才能按序应用后转发。
 2. 防止旧 primary 和新 primary 同时接受写，造成脑裂。没有租约，master 无法区分崩溃和分区，可能在新 primary 上任时旧 primary 还在写。
 3. 串行写 `x=1` 成功是已定义；两个并发写拼成 `xb` 是一致但未定义；primary 写了、secondary 没写、客户端收到错误，是不一致。
-4. 客户端失败重试时，primary 可能已经追加成功但回复丢了，重试会再追加一次；primary 也可能补 padding。应用用校验和识别 padding，用记录 ID 去重。
+4. 客户端失败重试时，primary 可能已经追加成功但回复丢了，重试会再追加一次；primary 也可能补填充。应用用校验和识别填充，用记录 ID 去重。
 5. chunkserver 最清楚自己磁盘上有什么；持久化位置表容易和实际状态不一致。启动时问一遍更简单，代价是恢复慢一点。
 
 **依据**：GFS 论文第 2.3–2.7 节（含 Table 1）、第 3.1–3.3 节、第 4.5 节；6.5840 Spring 2026 第 3 讲 GFS 讲义；Lab 1 与 Lab 2 任务书。
@@ -271,9 +271,9 @@ Lab 3 的 Raft 用选举出的领导者（leader）和多数派复制取代租�
 
 ## 第 4 讲：Paxos 共识（Paxos） {#lec4}
 
-### 两个都觉得自己是 primary 的备份
+### 两个备份都觉得自己该当主副本
 
-GFS 的 master 只有一个。它一挂，两个备份都说自己应该接管；网络分区让一边的客户端继续写，另一边的客户端读不到。要避免这种脑裂（split brain），系统必须让一组机器对“谁是 primary”达成同一个值。Paxos 解决的就是这个最小问题：在一个可能丢消息、机器可能崩溃的异步网络里，让所有参与者对单个值达成一致。
+GFS 的 master 只有一个。假设给它做主动备份，它一挂，两个备份都觉得自己应该接管；网络分区让一边的客户端继续写，另一边的客户端读不到。要避免这种脑裂（split brain），系统必须让一组机器对“谁是主副本（primary）”达成同一个值。Paxos 解决这个最小问题：在会丢消息、会崩溃的异步网络里，让所有参与者对单个值达成一致。
 
 ### 提议者、接受者、学习者
 
@@ -281,9 +281,11 @@ Paxos 有三个角色。提议者（proposer）提出一个值；接受者（acc
 
 ### 两阶段：先问“有没有旧值”，再说“接受这个值”
 
-第一阶段叫准备（prepare）。提议者选一个比见过的都大的编号 n，发给所有接受者。接受者如果发现 n 比它见过的最大编号 n_p 还大，就把 n_p 改成 n，承诺不再接受编号小于 n 的提案，并返回已接受的最大编号提案 (n_a, v_a)；如果 n 不够大，就拒绝。
+第一阶段叫准备（prepare）。提议者选一个比见过的都大的编号 n，发给所有接受者。接受者如果发现 n 比它见过的最大编号 n_p 还大，就把 n_p 改成 n，承诺（promise）不再接受编号小于 n 的提案，并返回已接受的最大编号提案 (n_a, v_a)；如果 n 不够大，就拒绝。
 
-第二阶段叫接受（accept）。提议者收到多数派回复后，挑 n_a 最大的值；没人接受过值，才用自己的值。然后它发 accept(n, v)。接受者只要 n 不小于 n_p，就接受这个提案，更新 n_p、n_a、v_a，回复接受；否则拒绝。多数派接受后，值就被选中。学习者通过接受者通知或提议者 decided 消息得知结果。
+第二阶段叫接受（accept）。提议者收到多数派回复后，挑 n_a 最大的值；没人接受过值，才用自己的值。然后它发 accept(n, v)。
+
+接受者只要 n 不小于 n_p，就接受这个提案，更新 n_p、n_a、v_a，回复接受；否则拒绝。多数派接受后，值就被选中。学习者通过接受者通知或提议者 decided 消息得知结果。
 
 ```text
 P1                 A1        A2        A3
@@ -314,29 +316,29 @@ P2
 
 三个接受者 A1、A2、A3，A3 挂了。P1 发 prepare(5)，A1、A2 回复没有接受过任何值。P1 发 accept(5, X)，A1、A2 接受，2/3 构成多数派，X 被选中。
 
-P2 不知道 X 已经选中，想提 Y，发 prepare(6)。这次 A1 挂了，A2、A3 回复。A2 的回复是 (n_a=5, v_a=X)，P2 必须发 accept(6, X)。如果 P2 违反规则发 accept(6, Y)，A2 和 A3 在 n=6 下会接受 Y，系统就出现了两个被选中的值。这反例说明“提议者必须选 n_a 最大的值”不是优化，是安全规则。
+P2 不知道 X 已经选中，想提 Y，发 prepare(6)。这次 A1 挂了，A2、A3 回复。A2 的回复是 (n_a=5, v_a=X)，P2 必须发 accept(6, X)。如果 P2 违反规则发 accept(6, Y)，A2 和 A3 在 n=6 下会接受 Y，系统就出现了两个被选中的值。这个反例说明“提议者必须选 n_a 最大的值”不是优化，是安全规则。
 
 再看崩溃。A2 接受 5/X 后崩溃，A1 也接受了，X 已经选中。A2 重启后如果丢了 n_a，P2 发 prepare(6) 时，A2 和 A3 都回复没接受过值，P2 就会提 Y，A2、A3 接受，Y 被选中。X 和 Y 都被选中，安全被破坏。所以接受者的状态必须落盘。
 
 ### 活锁和活性
 
-Paxos 保证安全，不保证结束。P1 发 prepare(10)，P2 发 prepare(11)；P1 的 accept(10, X) 因为接受者的 n_p 已经是 11 而被拒绝；P1 改发 prepare(12)，P2 的 accept(11, Y) 又因为 n_p 是 12 而被拒绝；两边不断抬高编号，谁也无法完成。这就是活锁（livelock），不破坏安全，但没进展。
+Paxos 保证安全性（safety），不保证活性（liveness）。P1 发 prepare(10)，P2 发 prepare(11)。P1 的 accept(10, X) 因为接受者的 n_p 已经是 11 而被拒绝，改发 prepare(12)。P2 的 accept(11, Y) 又因为 n_p 是 12 而被拒绝。两边不断抬高编号，谁也无法完成，这就是活锁（livelock），不破坏安全，但没进展。
 
 解决办法是让一段时间内只有一个提议者。选一个稳定的领导者（leader，也叫 distinguished proposer），由它连续提议；其他节点退避，或者随机等待后再试。FLP 结果说，在完全异步、允许一个崩溃的网络里，确定性共识算法无法同时保证安全和终止；Paxos 用随机化或超时来换取实际中的活性。
 
 ### 代价和边界
 
-Paxos 一次共识要两个往返：prepare 和 accept。多数派是 2f+1 个节点，容忍 f 个故障；3 个节点容忍 1 个。接受者每次承诺和接受都落盘，磁盘慢会拖慢吞吐；实际系统批量提交摊薄。
+Paxos 一次共识两个往返：prepare 和 accept。多数派是 2f+1 个节点，容忍 f 个故障。接受者每次承诺和接受都落盘，磁盘慢会拖慢吞吐；实际系统批量提交摊薄。
 
 multi-Paxos 把每轮的值当成日志的一个位置。稳定 leader 只做一次 prepare，之后对每个日志位置直接 accept，省掉每条一次的 prepare。这就是状态机复制（RSM）的骨架：日志顺序一致，所有副本按顺序应用，状态就一致。代价是 leader 成为瓶颈，且日志不能无限增长，需要快照。
 
-没有多数派时，Paxos 不工作。这不是 bug，是定义：少数派不能单方面做决定。分区恢复后，只要多数派重新能通信，协议可以继续。
+没有多数派时，Paxos 不能推进。这不是 bug，是定义：少数派不能单方面做决定。分区恢复后，多数派能通信，协议就继续。
 
 ### 回到 Lab 1、Lab 2 和 Lab 3
 
-Lab 3 的 Raft 是 Paxos 的工程化变体。`RequestVote` 像 prepare：候选人的 term 相当于提案编号，`votedFor` 相当于接受者的承诺，日志新旧检查相当于“不能选出一个缺少已提交值的 leader”。`AppendEntries` 像 accept：leader 把某个位置的值复制给多数派，多数派确认后提交。多数派交集保证已提交的日志不会在换 leader 后丢失；`TestBackup3B` 专门检查日志冲突时的回退和补齐。
+Lab 3 的 Raft 是 Paxos 的工程变体。`RequestVote` 像 prepare：候选人的任期（term）相当于提案编号，`votedFor` 相当于接受者的承诺，日志新旧检查相当于“不能选出一个缺少已提交值的 leader”。`AppendEntries` 像 accept：leader 把某个位置的值复制给多数派，多数派确认后提交。多数派交集保证已提交的日志不会在换 leader 后丢失；`TestBackup3B` 检查日志冲突时的回退和补齐。
 
-`currentTerm` 和 `votedFor` 必须持久化，对应接受者的 n_p；日志本身也要持久化，对应 (n_a, v_a)。`applyCh` 是学习者：提交后的条目按 index 顺序交给状态机。3A 的 `TestInitialElection3A`、`TestReElection3A` 检查选举，3B 的 `TestBackup3B` 检查日志修复。
+`currentTerm` 和 `votedFor` 必须持久化，对应接受者的 n_p；日志本身也要持久化，对应 (n_a, v_a)。`applyCh` 是学习者：提交后的条目按下标（index）顺序交给状态机。3A 的 `TestInitialElection3A`、`TestReElection3A` 检查选举，3B 的 `TestBackup3B` 检查日志修复。
 
 Lab 1 的 coordinator 是单点，正是 Paxos 要复制的对象；多副本时任务表要先达成共识。Lab 2 的版本比较是条件写，不是共识：它假设只有一个服务端，崩溃后状态就没了；多副本对版本顺序达成一致才需要 Paxos。`TestUnreliableNet` 只测 RPC 重复，不测服务端崩溃。
 
@@ -364,17 +366,17 @@ Lab 1 的 coordinator 是单点，正是 Paxos 要复制的对象；多副本时
 
 ### 测试结束了，进程却不退出
 
-一个 Raft server 在测试通过后没有退出。goroutine dump 里有 200 个协程：heartbeat 定时器还在每 100 ms 发一次，apply 协程卡在 `applyCh`，几个 RPC handler 持着锁等一个永远不会关闭的 channel。测试不是被算法卡住的，是被并发结构卡住的。这一讲看四个最常用的结构：定时器、工作池、流水线、取消，以及它们共同的边界：锁。
+一个 Raft server 测试通过后没有退出。协程转储（goroutine dump）里有 200 个协程：心跳（heartbeat）定时器还在每 100 ms 发一次，apply 协程卡在 `applyCh`，几个 RPC handler 持着锁等一个永远不会关闭的 channel。测试不是被算法卡住的，是被并发结构卡住的。这一讲看四个结构：定时器、工作池、流水线、取消，以及共同边界：锁。
 
 ### 四个角色和一条规则
 
-协程（goroutine）是 Go 的轻量线程，启动成本远低于系统线程；通道（channel）在协程之间传值并同步；互斥锁（mutex）保护共享状态；上下文（context）传递取消信号和截止时间。定时器（ticker）按固定间隔往 channel 发时间；工作池（worker pool）用固定数量的协程消费任务；流水线（pipeline）把多个 stage 用 channel 串起来。
+协程（goroutine）是 Go 的轻量线程，启动成本远低于系统线程。通道（channel）在协程之间传值并同步；互斥锁（mutex）保护共享状态；上下文（context）传递取消信号和截止时间。定时器（ticker）按固定间隔往 channel 发时间；工作池（worker pool）用固定数量的协程消费任务；流水线（pipeline）把多个阶段（stage）用 channel 串起来。
 
-一条规则贯穿全讲：谁生产，谁关闭；谁阻塞，谁检查取消。关闭 channel 是发送方的责任，接收方不要关闭；每个可能永久阻塞的发送或接收，都要有退出路径。
+一条规则贯穿全讲：谁生产，谁关闭；谁阻塞，谁检查取消。关闭 channel 是发送方的责任；每个阻塞点都要有退出路径。
 
 ### 定时器：别用 Sleep 轮询
 
-Raft 的心跳是周期事件。最直接的写法是 `for { time.Sleep(100 * time.Millisecond); sendHeartbeat() }`，但它有两个问题：睡眠期间无法响应关闭，测试结束时这个协程还在；多次睡眠会累积漂移。用定时器：
+Raft 的心跳是周期事件。最直接的写法是 `for { time.Sleep(100 * time.Millisecond); sendHeartbeat() }`，但它睡眠时无法响应关闭，多次睡眠还会累积漂移。用定时器：
 
 ```go
 t := time.NewTicker(100 * time.Millisecond)
@@ -389,11 +391,11 @@ for {
 }
 ```
 
-`Ticker` 会为慢消费者调整间隔或丢弃 tick，不会把积压的 tick 排队；`Stop` 之后不再发送，但不会关闭 channel，所以不要用 `range t.C` 等它结束。`time.Tick` 返回只读 channel，不能主动停止；Go 1.23 起未被引用的 ticker 可以被 GC 回收，但在服务关闭时要确定性停止，仍然用 `NewTicker` 加 `Stop`。
+`Ticker` 会为慢消费者调整间隔或丢弃 tick，不会把积压的 tick 排队；`Stop` 之后不再发送，但不会关闭 channel，所以不要用 `range t.C` 等它结束。`time.Tick` 返回只读 channel，不能主动停止；Go 1.23 起未被引用的 ticker 可以靠垃圾回收（GC）处理，但在服务关闭时要确定性停止，仍然用 `NewTicker` 加 `Stop`。
 
 ### 工作池：固定并发，别无限起协程
 
-Lab 1 的 coordinator 给每个任务起一个协程，任务一多，协程数量和内存就失控。工作池把并发固定住：
+如果每个任务起一个协程，任务一多，协程数量和内存就失控。工作池把并发固定住：
 
 ```go
 jobs := make(chan Job, 100)
@@ -411,7 +413,7 @@ for i := 0; i < 8; i++ {
 go func() { wg.Wait(); close(results) }()
 ```
 
-生产者往 `jobs` 发任务，发完 `close(jobs)`；8 个 worker 用 `range jobs` 消费，channel 关闭后循环自然结束。`results` 由最后一个 worker 关闭，或者由单独的 collector 关闭。多个 worker 读同一个 channel 叫扇出（fan-out）；把多个 channel 合并成一个叫扇入（fan-in）。
+生产者往 `jobs` 发任务，发完 `close(jobs)`；8 个工作协程（worker）用 `range jobs` 消费，channel 关闭后循环自然结束。`results` 由 `wg.Wait()` 之后的收集者（collector）关闭。多个 worker 读同一个 channel 叫扇出（fan-out）；把多个 channel 合并成一个叫扇入（fan-in）。
 
 ```text
 生产者 --jobs（缓冲 100）--> [worker 1] --\
@@ -423,12 +425,12 @@ go func() { wg.Wait(); close(results) }()
 
 看什么：固定 8 个 worker，不会因为任务多而膨胀；`jobs` 的缓冲是队列，也是背压（backpressure）；关闭 `jobs` 的是生产者，关闭 `results` 的是等待所有 worker 结束后的那一个协程。
 
-### 流水线：每个 stage 只做一件事
+### 流水线：每个阶段只做一件事
 
-流水线把处理拆成 stage，stage 之间用 channel 连接。每个 stage 从上游读、处理、往下游写，写完关闭自己的输出：
+流水线把处理拆成阶段（stage），阶段之间用 channel 连接。每个阶段从上游读、处理、往下游写，写完关闭自己的输出：
 
 ```go
-func stage(in <-chan int) <-chan int {
+func stage(ctx context.Context, in <-chan int) <-chan int {
     out := make(chan int)
     go func() {
         defer close(out)
@@ -444,27 +446,27 @@ func stage(in <-chan int) <-chan int {
 }
 ```
 
-上游关闭后 `range` 结束，`defer close(out)` 通知下游；下游提前退出时，如果上游还在往 `out` 发送，就会永久阻塞。所以每个发送都要带 `ctx.Done()`，或者保证下游会把 channel 读干净。goroutine 泄漏（goroutine leak）通常就是这样来的：请求结束了，后台协程还在等一个没人接收的 channel。
+上游关闭后 `range` 结束，`defer close(out)` 通知下游；下游提前退出时，如果上游还在往 `out` 发送，就会永久阻塞。所以每个发送都要带 `ctx.Done()`，或者保证下游会把 channel 读干净。协程泄漏（goroutine leak）通常就是这样来的：请求结束了，后台协程还在等一个没人接收的 channel。
 
 ### 取消：context 是协作式的
 
 取消（cancellation）不是杀死协程，而是发一个信号，让协程自己在安全点退出。`ctx, cancel := context.WithCancel(parent)` 创建子上下文；`defer cancel()` 在函数返回时释放资源；`ctx.Done()` 在取消时关闭。子上下文会随父上下文一起取消，形成一棵树。
 
-每个阻塞点都要检查：`select { case <-ctx.Done(): return; case job := <-jobs: ... }`。如果协程卡在不带 context 的 RPC 或系统调用里，取消信号到了它也退不出来；要用支持 context 的 API，或者设置超时。取消是协作的，代码不检查，信号就没有用。
+每个阻塞点都要检查：`select { case <-ctx.Done(): return; case job := <-jobs: process(job) }`。如果协程卡在不带 context 的 RPC 或系统调用里，取消信号到了它也退不出来；要用支持 context 的 API，或者设置超时。取消是协作的，代码不检查，信号就没有用。
 
 ### 锁的边界
 
-mutex 保护的是不变量，不是某个变量。Lab 2 的 `KVServer.Put` 里，比较版本和更新值必须在同一个临界区；Lab 1 的 coordinator 里，选任务和标 running 也必须原子。锁的边界要尽量短：只在内存里读写，不做出站 RPC、不读磁盘、不 `time.Sleep`、不往 channel 发送。持锁发送时，如果接收方不读，整个服务就卡死。
+mutex 保护的是不变量，不是某个变量。Lab 2 的 `KVServer.Put` 里，比较版本和更新值必须在同一个临界区；Lab 1 的 coordinator 里，选任务和标成运行中（running）也必须原子。锁的边界要尽量短：只在内存里读写，不做出站 RPC、不读磁盘、不 `time.Sleep`、不往 channel 发送。持锁发送时，如果接收方不读，整个服务就卡死。
 
-锁的顺序要固定。两个锁 A、B，一个协程先 A 后 B，另一个先 B 后 A，就会死锁。`go test -race` 能抓数据竞争，抓不到死锁；死锁要看 goroutine dump，找谁在等锁、谁在等 channel、谁在等 RPC。
+锁的顺序要固定。两个锁 A、B，一个协程先 A 后 B，另一个先 B 后 A，就会死锁。`go test -race` 能抓数据竞争，抓不到死锁；死锁要看协程转储，找谁在等锁、谁在等 channel、谁在等 RPC。
 
 ### 走一遍数字
 
-1000 个任务，每个耗时 100 ms，工作池 8 个 worker，`jobs` 缓冲 100。每个 worker 处理约 125 个任务，理论总时间约 1000 ÷ 8 × 100 ms = 12.5 秒。如果每个任务起一个协程，1000 个协程同时跑，内存和调度压力大，而且下游一慢就全部堆在 channel 上。
+1000 个任务，每个耗时 100 ms，工作池 8 个 worker，`jobs` 缓冲 100。每个 worker 处理约 125 个任务，理论总时间约 1000 ÷ 8 × 100 ms = 12.5 秒。每个任务起一个协程，1000 个同时跑，内存和调度压力大。
 
-第 3 个任务失败，调用 `cancel()`。8 个正在跑的 worker 在下一个 `select` 看到 `ctx.Done()`，停止处理并返回；生产者停止发送，`close(jobs)`，`wg.Wait()` 返回，collector 关闭 `results`。已经排队的 992 个任务不再执行，退出时间小于 1 秒。如果没有取消，关闭要等队列跑完，约 12.5 秒。
+第 3 个任务失败，调用 `cancel()`。8 个正在跑的 worker 在下一个 `select` 看到 `ctx.Done()`，停止处理并返回；生产者停止发送，`close(jobs)`，`wg.Wait()` 返回，collector 关闭 `results`。已经排队的 992 个任务不再执行，退出不到 1 秒。如果没有取消，关闭要等队列跑完，约 12.5 秒。
 
-Lab 3 里，心跳间隔 100 ms，election timeout 300–500 ms，心跳必须明显小于超时；每次测试杀掉 leader，如果 ticker 没 `Stop`、apply 协程没退出，跑 100 次就留下 100 个协程。`TestReElection3A` 会反复触发这条路径。
+Lab 3 里，心跳间隔通常取 100 ms，选举超时（election timeout）要明显大于它，lab 要求旧 leader 失联后 5 秒内选出新 leader；每次测试杀掉 leader，如果 ticker 没 `Stop`、apply 协程没退出，跑 100 次就留下 100 个协程。`TestReElection3A` 会反复触发这条路径。
 
 ### 代价和坏掉的样子
 
@@ -477,11 +479,11 @@ Lab 3 里，心跳间隔 100 ms，election timeout 300–500 ms，心跳必须�
 
 ### 回到 Lab 1、Lab 2 和 Lab 3
 
-Lab 1 的 coordinator 用 mutex 保护任务表，`Ask` 和 `Report` 只做短暂的临界区；后台扫描用 ticker 或循环加 `time.Sleep`，把 running 超过 10 秒的任务改回 idle。`TestMapParallel` 会因为持锁做慢操作而失败，`TestCrashWorker` 会因为重发太慢而超时。
+Lab 1 的 coordinator 用 mutex 保护任务表，`Ask` 和 `Report` 只做短暂的临界区；后台扫描用 ticker 或循环加 `time.Sleep`，把运行中超过 10 秒的任务改回空闲（idle）。`TestMapParallel` 会因为持锁做慢操作而失败，`TestCrashWorker` 会因为重发太慢而超时。
 
-Lab 2 的 `KVServer.Put` 在同一个锁里比较版本、更新值和版本；`Lock.Acquire` 只有在确认写入成功后才能返回，`Release` 要检查 owner。`TestManyClientsUnreliable` 会把锁的竞态放大。
+Lab 2 的 `KVServer.Put` 在同一个锁里比较版本、更新值和版本；`Lock.Acquire` 只有在确认写入成功后才能返回，`Release` 要检查持有者（owner）。`TestManyClientsUnreliable` 会把锁的竞态放大。
 
-Lab 3 常见骨架里，`Make` 启动 heartbeat 协程，`ticker()` 用 `time.NewTicker` 发心跳，`applier()` 是唯一往 `applyCh` 发送的协程，保证按 index 顺序、不重复。`RequestVote` 和 `AppendEntries` 在独立协程里跑，先拿锁再读状态，持锁不发 RPC。`TestInitialElection3A` 和 `TestBackup3B` 失败时，先看 goroutine dump，再看锁。
+Lab 3 常见骨架里，`Make` 启动心跳协程，`ticker()` 用 `time.NewTicker` 发心跳，`applier()` 是唯一往 `applyCh` 发送的协程，保证按下标（index）顺序、不重复。`RequestVote` 和 `AppendEntries` 在独立协程里跑，先拿锁再读状态，持锁不发 RPC。`TestInitialElection3A` 和 `TestBackup3B` 失败时，先看协程转储，再看锁。
 
 ### 检查一下自己
 
