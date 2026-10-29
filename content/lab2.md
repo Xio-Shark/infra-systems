@@ -7,6 +7,8 @@
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab2` · [评分标准](grading.html)
 >
 > [上一个：Lab 1](lab1.html) · [返回作业](labs.html) · [下一个：Lab 3](lab3.html)
+>
+> **难度** ★★ · **先修** Lab 1 + 第 2、8 讲 · **时间** 6–10 小时 · **最小通过** `make RUN="-run Reliable" kvsrv1` + `lock1` 的 Reliable；**完整通过** `kvsrv1` + `lock1` 全绿
 
 ## 你将完成什么
 

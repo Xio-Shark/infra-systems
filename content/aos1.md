@@ -5,6 +5,8 @@
 > **先读**：[第 1 讲](agent-os.html#aos1)、[第 2 讲](agent-os.html#aos2)、[第 5 讲](agent-os.html#aos5) · **验收**：人工验收，清单见下
 >
 > [返回作业](labs.html) · [下一个：AOS2](aos2.html)
+>
+> **难度** ★★★★ · **先修** Linux/Go + INFRA 01 Lab 1–4 + INFRA 02 CN1–CN2 · **时间** 12–20 小时 · **最小通过** `spawn`/`exec` + 一组隔离；**完整通过** ABI 表 + 四组可观察行为
 
 ## 你将完成什么
 
@@ -186,7 +188,7 @@ readlink /proc/self/ns/pid   # 两个 inode 不同
 | 写 `cgroup.procs` 报 `ENOENT` | 父级没开 `+memory +pids`，子目录不存在 | 先写父级 `cgroup.subtree_control`，再 `mkdir` |
 | 写了 `memory.max` 但没被杀 | 进程不在这个 cgroup，或限制在分配之后才生效 | 看 `/proc/<pid>/cgroup`；用同步管道保证 exec 前写好 |
 | seccomp 装上后 `execve` 直接失败 | 默认拒绝但没放行动态链接器和 `execve` | 先放行最小集合；调试时用 `SECCOMP_RET_LOG` 看缺哪个 |
-| `openat2: ENOSYS` | 内核低于 5.6，或 seccomp 拦了 `openat2` | 换内核；或在过滤器里放行 syscall 437（x86_64架构） |
+| `openat2: ENOSYS` | 内核低于 5.6，或 seccomp 拦了 `openat2` | 换内核；或在过滤器里放行 syscall 437（x86_64 架构） |
 | 第二次 `exec` 又跑了一遍 | 幂等表只在内存，或键里带了随机数 | 持久化 `idem -> result`，键绑定 task、序号、参数 hash |
 | daemon 退出后任务还在 | 只杀了 init，没杀 cgroup | `cgroup.kill` 后等 `populated=0` |
 

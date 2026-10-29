@@ -29,6 +29,8 @@ cd infra-systems
 
 讲义是导读和实验索引。每讲先讲问题和机制，读完讲义和实验任务书就能开始实验。论文、官方页面和规范用来补完整论证，不必先读；做完实验后，至少读对应章节。
 
+按什么顺序做、每个实验多难、时间不够时怎么砍，见[学习路径](path.html)。
+
 ## 每门课的第一步
 
 - **INFRA 01**：读[第 1 讲 MapReduce](lectures.html#lec1)，打开 [Lab 1](lab1.html)，实现后跑 `LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1`。

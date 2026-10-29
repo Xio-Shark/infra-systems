@@ -10,7 +10,17 @@
 
 课程从 MapReduce 开始，先讲 RPC、GFS、Paxos、Raft，再进入线性一致、ZooKeeper、2PC、Spanner。后半程看 Chain Replication、FaRM、IronFleet、Memcached、Lambda、Ray、SUNDR、Bitcoin，最后到 PBFT。主线不是把论文串起来，而是同一组约束的递进：副本放在哪、谁来写、什么时候算提交、失败后怎么恢复、客户端能看到什么顺序。
 
-五个 Go 实验把这些约束写成代码：MapReduce、单机 KV、Raft、基于 Raft 的 replicated state machine、分片 KV。Lab 3 是核心，通常需要 2–3 周；Lab 4/5 会复用它。
+五个 Go 实验把这些约束写成代码：MapReduce、单机 KV、Raft、基于 Raft 的 replicated state machine、分片 KV。Lab 3 是核心，通常需要 3–5 周；Lab 4/5 会复用它。
+
+## 难度曲线
+
+- **第 1–2 讲 + Lab 1–2**（★★）：单机、RPC、KV；先建立“任务、重试、去重”的直觉。
+- **第 3–4 讲**（★★★）：GFS/Paxos，给 Raft 打基础。
+- **第 5–8 讲 + Lab 3**（★★★★）：Go 并发、Raft 两讲、线性一致；难度最陡的一段，留出 4–6 周。
+- **第 9–10 讲 + Lab 4**（★★★）：ZK、Lab 3 Q&A、RSM/KV；重点是提交规则和去重。
+- **第 11–22 讲 + Lab 5**（★★★★）：分片、迁移和系统案例；案例讲是导览，不需要逐篇精读。
+
+完整顺序、最小路径和时间安排见[学习路径](path.html)。
 
 ## 怎么开始
 

@@ -8,6 +8,8 @@
 
 讲义是导读和实验索引：读完对应讲义，再看本页和实验页的任务书，就可以开始。论文、官方页面和规范用来补完整论证，不是前置。
 
+先看[学习路径](path.html)：第 0 周先修，然后 Lab 1→Lab 2→Lab 3→Lab 4→Lab 5；CN1→CN5；AOS1→Capstone。每个实验页顶部都有“难度 / 先修 / 时间 / 最小通过”，不要跳序。
+
 **第一次学，按这个顺序：**
 
 1. **选一门课**：
@@ -19,7 +21,7 @@
    - 打开实验页，先读“你将完成什么”“开始之前”“常见错误”。
    - 在一次性的 Linux/WSL2 环境里实现，跑验收测试。
    - 写 300 字复盘：问题、设计、失败模式、测试结果。
-3. **不要同时开两个实验**。INFRA 01 的 Lab 3（Raft）是核心，通常需要 2–3 周；Lab 4/5 会复用它。
+3. **不要同时开两个实验**。INFRA 01 的 Lab 3（Raft）是核心，通常需要 3–5 周；Lab 4/5 会复用它。
 
 如果只是想先跑通一个最小例子，从 [INFRA 01 Lab 1](lab1.html) 或 [INFRA 02 CN1](cn1.html) 开始；两者都不需要 Kubernetes。
 
@@ -117,7 +119,7 @@ make shardkv     # Lab 5
 |---|---|---|---|
 | Lab 1 MapReduce | 8–12h | CN1 container | 6–10h |
 | Lab 2 KV/lock | 6–10h | CN2 Pod | 8–12h |
-| Lab 3 Raft | 20–30h | CN3 CNI/Service | 10–14h |
+| Lab 3 Raft | 30–40h | CN3 CNI/Service | 10–14h |
 | Lab 4 RSM/KV | 8–12h | CN4 workspace | 8–12h |
 | Lab 5 shardkv | 10–15h | CN5 capstone | 15–25h |
 | AOS1 ABI/sandbox | 12–20h | AOS2 workspace | 10–16h |

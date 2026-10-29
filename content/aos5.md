@@ -5,6 +5,8 @@
 > **先读**：[第 9 讲](agent-os.html#aos9) · [第 10 讲](agent-os.html#aos10) · **验收**：人工验收，清单见下
 >
 > [返回作业](labs.html) · [上一个：AOS4](aos4.html) · [下一个：Capstone](aos-capstone.html)
+>
+> **难度** ★★★★ · **先修** AOS2/AOS3 · **时间** 10–16 小时 · **最小通过** lease + fencing；**完整通过** 双主拒绝 + 审计链 + 重放
 
 ## 你将完成什么
 

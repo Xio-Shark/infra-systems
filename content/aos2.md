@@ -5,6 +5,8 @@
 > **先读**：[第 4 讲](agent-os.html#aos4)、[第 6 讲](agent-os.html#aos6) · **验收**：人工验收，清单见下
 >
 > [返回作业](labs.html) · [上一个：AOS1](aos1.html) · [下一个：AOS3](aos3.html)
+>
+> **难度** ★★★ · **先修** AOS1 · **时间** 10–16 小时 · **最小通过** 单文件 commit/rollback；**完整通过** manifest + journal + 崩溃恢复
 
 ## 你将完成什么
 

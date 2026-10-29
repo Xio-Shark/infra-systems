@@ -7,6 +7,8 @@
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab1` · [评分标准](grading.html)
 >
 > [返回作业](labs.html) · [下一个：Lab 2](lab2.html)
+>
+> **难度** ★★ · **先修** 第 1、2 讲 + Go 基础 · **时间** 8–12 小时 · **最小通过** `TestWc` + `TestIndexer`；**完整通过** 7 个测试全绿
 
 ## 你将完成什么
 

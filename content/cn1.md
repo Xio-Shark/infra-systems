@@ -7,6 +7,8 @@
 > **验收**：`SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1`
 >
 > [返回作业](labs.html) · [下一个：CN2](cn2.html)
+>
+> **难度** ★★ · **先修** Linux/Go 基础 + 第 1、2 讲 · **时间** 6–10 小时 · **最小通过** judge 的 namespace/rootfs/proc 检查；**完整通过** judge 全过（没有 `lsns` 时允许一项 SKIP）+ OOM 手工验收
 
 ## 你将完成什么
 

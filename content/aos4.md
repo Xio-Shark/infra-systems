@@ -7,6 +7,8 @@
 > **参考**：[overlayfs 内核文档](https://docs.kernel.org/filesystems/overlayfs.html) · [cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html) · [`FICLONE`](https://man7.org/linux/man-pages/man2/ioctl_ficlone.2.html)
 >
 > [返回作业](labs.html) · [上一个：AOS3](aos3.html) · [下一个：AOS5](aos5.html)
+>
+> **难度** ★★★ · **先修** AOS2 · **时间** 8–14 小时 · **最小通过** 文件快照/恢复；**完整通过** 分支 + 一致快照 + gaps 报告
 
 ## 你将完成什么
 

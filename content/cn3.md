@@ -7,6 +7,8 @@
 > **验收**：人工清单（见“验收与测试”）；judge 接口未冻结
 >
 > [上一个：CN2](cn2.html) · [返回作业](labs.html) · [下一个：CN4](cn4.html)
+>
+> **难度** ★★★★ · **先修** CN1/CN2 + 第 6、7 讲 · **时间** 10–14 小时 · **最小通过** veth/bridge/NAT；**完整通过** CNI + Service VIP + hairpin
 
 ## 你将完成什么
 

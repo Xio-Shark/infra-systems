@@ -6,7 +6,7 @@
 
 ## 第一次来
 
-先选一门课，再按课程页的“怎么开始”做第一个实验。第一次来先读[导引](start.html)。
+先选一门课，再按课程页的“怎么开始”做第一个实验。第一次来先读[导引](start.html)。不确定从哪开始、每周该做多少，先看[学习路径](path.html)：第 0 周先修、五段顺序、难度标记和最小路径。
 
 | 你想学 | 先看 | 第一个作业 | 评分 |
 |---|---|---|---|
@@ -43,11 +43,11 @@ INFRA 03 读 seL4、gVisor、AIOS、Saga，设计一组新的原子操作，把 
 
 ## 课程
 
-| 课程 | 名称 | 讲数 | 实验 | 先修 |
-|---|---|---|---|---|
-| INFRA 01 | [分布式系统](course-map.html) | 21 + demo | 5 | Go、操作系统基础 |
-| INFRA 02 | [云原生系统](cloud-native.html) | 14 | 5 | Linux/WSL2、C 或 Go |
-| INFRA 03 | [Agent OS](agent-os.html) | 12 | 5 + capstone | INFRA 01 Lab 1–4 + INFRA 02 CN1–CN2，或同等基础 |
+| 课程 | 名称 | 讲数 | 实验 | 难度 | 先修 |
+|---|---|---|---|---|---|
+| INFRA 01 | [分布式系统](course-map.html) | 21 + demo | 5 | ★★ → ★★★★ | Go、操作系统基础 |
+| INFRA 02 | [云原生系统](cloud-native.html) | 14 | 5 | ★★ → ★★★★★ | Linux/WSL2、C 或 Go |
+| INFRA 03 | [Agent OS](agent-os.html) | 12 | 5 + capstone | ★★★ → ★★★★★ | INFRA 01 Lab 1–4 + INFRA 02 CN1–CN2，或同等基础 |
 
 ## 先修要求
 

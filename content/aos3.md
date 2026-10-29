@@ -5,6 +5,8 @@
 > **先读**：[第 3 讲](agent-os.html#aos3)、[第 11 讲](agent-os.html#aos11) · **验收**：人工验收，清单见下
 >
 > [返回作业](labs.html) · [上一个：AOS2](aos2.html) · [下一个：AOS4](aos4.html)
+>
+> **难度** ★★★★ · **先修** AOS1 · **时间** 12–20 小时 · **最小通过** 句柄 + `openat2`；**完整通过** 衰减/撤销 + 逃逸测试
 
 ## 你将完成什么
 
@@ -163,7 +165,7 @@ Landlock 负责进程级兜底：规则在 `exec` 前装好，之后所有打开
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `openat2: ENOSYS` | 内核低于 5.6，或 seccomp 拦了 `openat2` | 换内核；放行 syscall 437（x86_64架构） |
+| `openat2: ENOSYS` | 内核低于 5.6，或 seccomp 拦了 `openat2` | 换内核；放行 syscall 437（x86_64 架构） |
 | 越界返回 `EXDEV` 而不是 `EACCES` | 这是 `RESOLVE_BENEATH` 的正常语义 | 按 errno 断言，不要改成 `EACCES` |
 | 只做 `openat2`，`fchdir` 用例逃了 | 普通 `openat` 不受 `openat2` 约束 | 加 Landlock；全封 `openat` 会破坏动态链接器，不要这么做 |
 | Landlock 返回 `EOPNOTSUPP` | 内核没编译或启动时禁用了 Landlock | 降级到 seccomp 加 `openat2`，报告里写明 |
@@ -187,7 +189,7 @@ strace -f -e trace=openat2,openat,fchdir,mount,chroot,ptrace,pidfd_getfd,seccomp
 
 `openat2` 返回 `EXDEV` 说明路径被 `BENEATH` 拒绝；返回 `EACCES` 多半是 Landlock；`EPERM` 多半是 seccomp 或缺 capability。三个来源要分清，报告里不能都写成“被沙箱挡住”。
 
-状态看 `/proc/<pid>/status` 的 `Seccomp`、`NoNewPrivs`、`CapEff`，`/proc/<pid>/fd` 看有没有多余 fd，`/proc/<pid>/fdinfo/<fd>` 看 flags。Landlock 的拒绝通常进内核审计，`dmesg -T | tail` 或 auditd 能看到，取决于配置；seccomp 杀进程时退出信号是 `SIGSYS`（31架构）。
+状态看 `/proc/<pid>/status` 的 `Seccomp`、`NoNewPrivs`、`CapEff`，`/proc/<pid>/fd` 看有没有多余 fd，`/proc/<pid>/fdinfo/<fd>` 看 flags。Landlock 的拒绝通常进内核审计，`dmesg -T | tail` 或 auditd 能看到，取决于配置；seccomp 杀进程时退出信号是 `SIGSYS`（x86_64 上是 31）。
 
 审计日志用 `./aos3 audit --cap cap_7f3a --since 10m` 查，每条要能和 `strace` 的时间对上。撤销后先查表，再查进程：表里没了但进程还在读，说明你只撤了控制面；这正是要记录的现象。收尾时用 `cgroup.events` 确认 `populated=0`。
 

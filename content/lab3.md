@@ -9,6 +9,8 @@
 > [上一个：Lab 2](lab2.html) · [返回作业](labs.html) · [下一个：Lab 4](lab4.html)
 >
 > **对照**：Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`（可选）。
+>
+> **难度** ★★★★ · **先修** Lab 1/2 + 第 6、7、8 讲 · **时间** 30–40 小时 · **最小通过** 3A+3B；**完整通过** 3A–3D
 
 ## 你将完成什么
 

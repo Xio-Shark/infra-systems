@@ -7,6 +7,8 @@
 > **评分**：`LAB_ROOT=~/labs/6.5840 ./judge/run.sh infra01 lab4` · [评分标准](grading.html)
 >
 > [上一个：Lab 3](lab3.html) · [返回作业](labs.html) · [下一个：Lab 5](lab5.html)
+>
+> **难度** ★★★ · **先修** Lab 2/3（含 3D）+ 第 6–8 讲 · **时间** 8–12 小时 · **最小通过** 4A+4B；**完整通过** 4A–4C
 
 ## 你将完成什么
 
