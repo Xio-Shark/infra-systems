@@ -59,7 +59,7 @@ info: wrote visualization to /var/folders/.../porcupine-2242138501.html
 
 只改 `raft1/raft.go`；`raft_test.go`、`test.go`、`server.go`、`proxy.go`、`raftapi` 契约和 `labrpc` 都不要改。每个 peer 跑在独立进程里，只能通过 RPC 通信，不能共享 Go 变量或文件。
 
-时间预算：30–40 小时，3A 约 3–5 小时，3B 约 10–15 小时，3C 约 8–10 小时，3D 约 10–15 小时。这是经验估计；调试通常比写代码更花时间。
+时间预算：30–40 小时，其中 3A 约 3–5 小时，3B 约 9–12 小时，3C 约 8–10 小时，3D 约 10–13 小时。这是经验估计，不是官方数字；调试通常比写代码更花时间。分项相加与[工时表](labs.html#hours)一致，改一处要同步另一处。
 
 ## 代码地图
 

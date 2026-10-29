@@ -82,7 +82,7 @@ input files ──map──> mr-X-0 … mr-X-(nReduce-1) ──reduce──> mr-
 
 格式只有一条硬性要求：`mr-out-Y` 的每一行是 `%v %v`。中间文件怎么存由你决定，JSON 只是建议；不要为了省事把最终输出也改成 JSON，测试会按行比较。
 
-`ihash` 已经在 `worker.go` 里给你了；`nReduce` 由 `MakeCoordinator` 的参数传入，测试里是 2、3 或 4，正常运行时是 10。
+`ihash` 已经在 `worker.go` 里给你了；`nReduce` 由 `MakeCoordinator` 的参数传入：测试用 2、3 或 4（`mr_test.go` 里 `runMR` 的第三个参数），手动跑 `main/mrcoordinator.go` 时固定是 10。你的代码不能假设它是某个固定值，`TestWc` 和 `TestIndexer` 用的就不同。
 
 中间文件建议用 JSON：
 

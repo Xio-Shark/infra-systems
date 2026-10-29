@@ -3,37 +3,71 @@ name: Deploy site
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  check:
+    # 内容一致性检查放在部署之前：断链、工时数字对不上、讲义缺节时直接失败，
+    # 不再把坏的版本发到线上。
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install Pandoc
         run: sudo apt-get update && sudo apt-get install -y pandoc
-      - name: Build
+      - name: Install font tooling
+        run: pip install --quiet fonttools brotli
+      - name: Consistency checks
+        run: python3 tools/check.py
+      - name: Build site
         run: ./build.sh
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Verify built output
+        run: python3 tools/verify_build.py
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
+          go-version: "1.22"
+      - name: Check starters stay buildable
+        run: |
+          cd starters/cn1
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+          go build -o /dev/null .
+          GOOS=linux go build -o /dev/null .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
           path: dist
 
   deploy:
+    # 只有推送到 main 才部署；PR 只跑检查。
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: check
+    permissions:
+      pages: write
+      id-token: write
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4

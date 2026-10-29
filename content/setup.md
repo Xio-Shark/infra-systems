@@ -94,11 +94,7 @@ git clone git://g.csail.mit.edu/6.5840-golabs-2026 6.5840
 cd 6.5840/src
 ```
 
-如果 `git://` 被网络挡住，先试 HTTPS（MIT 的证书可能不匹配）：
-
-```bash
-git clone https://g.csail.mit.edu/6.5840-golabs-2026 6.5840
-```
+如果 `git://` 被网络挡住（企业防火墙、部分云主机默认封 9418 端口），**没有可用的 HTTPS 兜底**：`https://g.csail.mit.edu/6.5840-golabs-2026` 的证书主体名不匹配，`GIT_SSL_NO_VERIFY=1` 也只是把这个错误换成 `repository not found`。换一个网络或在能访问 9418 端口的机器上克隆，然后把目录拷回来。
 
 目录结构：
 
