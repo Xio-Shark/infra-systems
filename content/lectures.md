@@ -598,42 +598,42 @@ Lab 3A 只做选举和心跳，目标是 `TestInitialElection3A`、`TestReElecti
 
 ## 第 7 讲：Raft 的提交与快照（Raft (2)） {#lec7}
 
-S1 是任期（term）4 的 leader。它把 `x = 1` 写到下标（index）7，复制到 S2、S3 就崩溃了。S3 当选后看到下标 7 在 S1、S2、S3 上，便认为它已提交（commit），回复客户端成功；随后 S5 在更高任期当选，用新条目覆盖了旧值。客户端收到成功，读到的却不是 1。多数派（majority）复制不等于提交。
+S1 是任期（term）4 的领导者（leader）。它把 `x = 1` 写到下标（index）7，复制到 S2、S3、S4 就崩溃了。S3 当选后看到下标 7 在 S1 到 S4，便认为它已提交（commit），回复成功；随后 S5 在更高任期当选，用新条目覆盖了旧值。客户端收到成功，读到的不是 1。多数派（majority）复制不等于提交。
 
 ### 提交、应用和快照各指什么
 
-日志（log）是一串带下标和任期的条目（entry）。`commitIndex` 是已知提交的最高下标，`lastApplied` 是已交给状态机（state machine）执行的最高下标；两者都不持久化。快照（snapshot）是状态机在某个下标上的完整状态，附带 `lastIncludedIndex` 和 `lastIncludedTerm`，这两个值要持久化（persist）。
+日志（log）是一串带下标和任期的条目（entry）。`commitIndex` 是已知提交的最高下标，`lastApplied` 是已交给状态机（state machine）执行的最高下标；两者都不持久化（persist）。快照（snapshot）是状态机在某个下标上的完整状态，附带 `lastIncludedIndex` 和 `lastIncludedTerm`，这两个值要持久化。
 
 ### 提交规则为什么不能只看多数派
 
-规则是：leader 只能提交当前任期的条目；旧条目要等当前任期的新条目提交后，随之间接提交。Figure 8 给出反例。
+规则：leader 只能提交当前任期的条目；旧条目要等当前任期的新条目提交后才间接提交。Figure 8 是反例。
 
 ```text
 (a) 任期 2    S1 [1][2]   S2 [1][2]   S3 [1]   S4 [1]   S5 [1]
               S1 是 leader，下标 2 只到 S1、S2，未提交就崩溃
 (b) 任期 3    S5 靠 S3、S4、S5 的票当选，在下标 2 写入任期 3 的另一条
-(c) 任期 4    S1 重启当选，把下标 2 的旧条目复制到 S1、S2、S3
-              3/5 已有该条目，但它不是当前任期的条目，仍不能提交
+(c) 任期 4    S1 重启当选，追加任期 4 条目，把下标 2 的旧条目复制到 S2、S3
+              3/5 已有旧条目，但它不是当前任期的条目，仍不能提交
 (d) 更高任期  S1 崩溃，S5 靠 S2、S3、S4 的票当选，用任期 3 的条目覆盖下标 2
-(e) 如果 S1 崩溃前先提交一条任期 4 的条目，旧条目随之间接提交，
-    S5 的日志比多数派旧，凑不齐票，无法当选
+(e) 如果 S1 崩溃前先让任期 4 的条目上多数派，旧条目随之间接提交，
+    S5 日志比多数派旧，凑不齐票，无法当选
 ```
 
 看什么：盯住下标 2 的任期和每一列的多数派；能不能提交取决于当前任期，而不是副本数。
 
-在 (c) 里，下标 2 的旧条目已在多数派上，但 S1 不能提交它；S5 在 (d) 里仍能靠 S2、S3、S4 的票当选，覆盖它。只有 (e) 先提交一条任期 4 的条目，旧条目才随之间接提交；此时 S5 的日志比多数派旧，选举限制（election restriction）让它拿不到票。
+在 (c) 里，下标 2 的旧条目已在多数派，但 S1 不能提交它；S5 在 (d) 里仍能靠 S2、S3、S4 当选并覆盖它。只有 (e) 先让任期 4 的条目上多数派，旧条目才随之间接提交；此时 S5 日志比多数派旧，选举限制（election restriction）让它拿不到票。
 
 ### 持久化：先落盘，再回复
 
-Figure 2 规定，`currentTerm`、`votedFor` 和 `log[]` 在改变后、回复任何 RPC 之前必须写进稳定存储（stable storage）。顺序不能反：先回复 `RequestVote` 再持久化，重启后可能忘记自己投过票，在同一个任期投第二票，选出两个 leader。`commitIndex`、`lastApplied` 是易失状态，重启后从快照位置或 0 重建；`nextIndex`、`matchIndex` 在当选后重新初始化。`labgob` 只编码首字母大写的字段，字段名写错时持久化的内容会悄悄变成零值，重启后才表现为丢日志或重复投票。
+Figure 2 规定，`currentTerm`、`votedFor` 和 `log[]` 改变后、回复远程过程调用（RPC）前必须写进稳定存储（stable storage）。顺序不能反：先回复 `RequestVote` 再持久化，重启后可能忘记自己投过票，在同一个任期投第二票，选出两个 leader。`commitIndex`、`lastApplied` 是易失状态，重启后从快照位置或 0 重建；`nextIndex`、`matchIndex` 在当选后重新初始化。`labgob` 只编码首字母大写的字段，字段名写错时持久化的内容会悄悄变成零值，重启后才表现为丢日志或重复投票。
 
 ### 快照：把日志前缀换成状态
 
 状态机定期写快照，告诉 Raft“这个下标前的状态已包含”；Raft 截断日志，只留快照后的条目。`lastIncludedIndex` 是最后一个被包含的下标，不是下一个日志下标，`lastIncludedTerm` 用来支撑后续 `AppendEntries` 的前缀检查。
 
-落后的 follower 需要 `InstallSnapshot`。leader 发现 `nextIndex[f]` 小于等于自己的 `lastIncludedIndex`，说明要发的日志已经被截掉，于是改发快照。follower 若在快照下标处有相同任期条目，就保留后缀；否则丢弃整条日志，用快照重置状态机，并把 `commitIndex`、`lastApplied` 跳到 `lastIncludedIndex`。实验用 `applyCh` 把快照交给服务，服务只允许前进；3D 只要求一次 `InstallSnapshot` 发完整快照，不分块，快照要和 Raft 状态一起 `persister.Save()`。
+落后的跟随者（follower）需要 `InstallSnapshot`。leader 发现 `nextIndex[f]` 小于等于自己的 `lastIncludedIndex`，说明要发的日志已经被截掉，于是改发快照。follower 若在快照下标处有相同任期条目，就保留后缀；否则丢弃整条日志，用快照重置状态机，并把 `commitIndex`、`lastApplied` 跳到 `lastIncludedIndex`。lab 用 `applyCh` 把快照交给服务，服务只允许前进；3D 只要求一次 `InstallSnapshot` 发完整快照，不按偏移量（offset）分块，快照要和 Raft 状态一起 `persister.Save()`。
 
-### 客户端去重：一个请求只执行一次
+### 客户端去重（client deduplication）：一个请求只执行一次
 
 客户端给每个命令分配唯一 ID 和序列号；状态机在应用（apply）时记录每个客户端已执行到的序列号和结果。重试命令序列号不大于记录值时，直接返回缓存结果，不再执行。leader 在提交后、回复前崩溃，客户端换 leader 重试也不会产生第二次副作用；去重表必须进快照。
 
@@ -641,7 +641,7 @@ Figure 2 规定，`currentTerm`、`votedFor` 和 `log[]` 在改变后、回复�
 
 最简单的做法是把 `Get` 也写进日志：leader 等到这条 `Get` 提交并应用后回答。读和写排在同一个日志顺序里，线性一致读（linearizable read）自然成立；Lab 4 官方页说这样做就够了，不要求第 8 节的只读优化，代价是每次读都要复制和落盘。
 
-更快的是 ReadIndex（读下标）：leader 在任期开始时先提交一条空操作（no-op），拿到当前任期的 `commitIndex`，再向多数派发心跳确认自己仍是 leader，等 `lastApplied` 追上读下标，最后本地读。租约（lease）读依赖时钟偏移有界，进程长时间暂停时可能读到旧值；follower 直接读本地 map 也会落后。
+更快的是读下标（ReadIndex）：leader 在任期开始时先提交一条空操作（no-op），拿到当前任期的 `commitIndex`，再向多数派发心跳确认自己仍是 leader，等 `lastApplied` 追上读下标，最后本地读。租约（lease）读依赖时钟偏移有界，进程长时间暂停时可能读到旧值；follower 直接读本地 map 也会落后。
 
 ### 走一遍带数字的流程
 
@@ -655,7 +655,12 @@ Figure 2 规定，`currentTerm`、`votedFor` 和 `log[]` 在改变后、回复�
 
 持久化不是免费的：每次任期、投票或日志变化都要落盘。快照会暂停状态机或需要写时复制（copy-on-write）；太频繁浪费磁盘，太稀疏则日志过长。`InstallSnapshot` 占用网络，快照越大，落后的 follower 追得越慢。
 
-边界在“什么时候能省”：旧条目若在每个 server 上，可直接判定提交，Raft 选择保守；租约读依赖时钟；去重表可清理，但规则要匹配客户端重试窗口。坏掉时：提交旧任期条目会看到成功的值被覆盖；持久化顺序错会出现同任期两个 leader；快照下标混淆会让 `applyCh` 倒退；去重表漏进快照会让 `Put` 执行两次。
+边界在“什么时候能省”。旧条目若在每个 server 上，可直接判定提交，Raft 选择保守。租约读依赖时钟；去重表可清理，规则要匹配客户端重试窗口。坏掉时：
+
+- 提交旧任期条目，会覆盖已成功的值。
+- 持久化顺序错，会出现同任期两个 leader。
+- 快照下标混淆，会让 `applyCh` 倒退。
+- 去重表漏进快照，会让 `Put` 执行两次。
 
 ### 和实验的关系
 
@@ -722,6 +727,8 @@ C1 在 0 到 10 之间执行，C2 在 2 到 6 之间执行，两者重叠。把 
 
 举例：银行转账事务 T1 读 x、读 y、写 x、写 y，另一个事务 T2 也在 x、y 之间转账。每个 key 都线性一致，T1 仍可能读到 x 的新值和 y 的旧值，总和不对。要避免这种不一致，需要严格可串行化、两阶段锁或快照隔离加冲突检查；单 key 线性一致不够。
 
+线性一致的代价是协调。跨副本的读要确认 leader 仍有效，或者把读写进日志；网络分区时，少数派可能无法服务。缓存和 follower 本地读更快，但会破坏实时序。
+
 ### 坏掉的样子
 
 常见的坏法有五种。陈旧读（stale read）：读了一个落后的副本或缓存，写已经完成，读还返回旧值。读己之写失败：客户端写成功，紧接着读自己的写却读不到，通常是换了副本或连接。
@@ -752,19 +759,33 @@ Lab 2 的 `Clerk.Put` 和 `Clerk.Get` 要求线性一致，`TestPutConcurrentRel
 
 ## 第 9 讲：协调服务 ZooKeeper（ZooKeeper） {#lec9}
 
-10:00:00.000，客户端 A 向 leader 写 `/config`，把值从 v3 改成 v4；10:00:00.005，leader 提交，事务标识（zxid）为 0x20；10:00:00.006，A 收到成功。10:00:00.010，客户端 B 连到 follower F，F 只应用到 zxid 0x1d，读 `/config` 仍然得到 v3。A 已经在消息里告诉 B“配置是 v4”，B 却读到 v3。ZooKeeper 允许这种陈旧读（stale read），因为它只对写做线性一致，读由各副本本地服务。要用好它，必须分清四个概念。
+10:00:00.000，客户端 A 向领导者（leader）写 `/config`，把值从 v3 改成 v4；10:00:00.005，leader 提交，事务标识（zxid）为 0x20；10:00:00.006，A 收到成功。10:00:00.010，客户端 B 连到跟随者（follower）F，F 只应用到 zxid 0x1d，读 `/config` 仍然得到 v3。A 已经在消息里告诉 B“配置是 v4”，B 却读到 v3。ZooKeeper 允许这种陈旧读（stale read），因为它只对写做线性一致，读由各副本本地服务。要用好它，必须分清四个概念。
 
 ### znode 树、会话和监听
 
-ZooKeeper 的数据模型是一棵树，每个节点叫 znode（数据节点），可以存少量数据和版本号。znode 分普通节点和临时节点（ephemeral），创建时还可以加顺序标志（sequential）；临时节点在创建它的会话（session）结束时自动删除，顺序节点的名字带一个单调递增的序号。会话有超时时间，客户端定期发心跳；会话可以在 server 之间迁移，新 server 要先追上客户端见过的最后一个 zxid。
+ZooKeeper 的数据模型是一棵树，每个节点叫数据节点（znode），存少量数据和版本号。znode 分普通节点和临时节点（ephemeral），创建时可加顺序标志（sequential）；临时节点在会话（session）结束时自动删除，顺序节点名带单调递增序号。会话有超时时间，客户端定期发心跳；会话可以在 server 之间迁移，新 server 要先追上客户端见过的 zxid。
+
+```text
+/
+├── /config          (v3)
+├── /workers
+│   ├── w1           (ephemeral)
+│   └── w2           (ephemeral)
+└── /lock
+    ├── lock-0001    (holder)
+    ├── lock-0002    (watch 0001)
+    └── lock-0003    (watch 0002)
+```
+
+看什么：临时节点随会话消失，顺序节点按序号排队。
 
 监听（watch）由带标志的读操作注册，例如 `getData('/config', true)`。它只承诺一件事：信息变了会通知；通知不携带新值，客户端要重新读。触发一次后 watch 失效，会话关闭也会失效。服务端处理写时按顺序触发并清除通知，所以同一个会话不会先看到新状态、后收到通知。
 
 ### 写走 leader，读走本地
 
-所有写请求都发给 leader。leader 执行请求，原子广播（ZAB，ZooKeeper Atomic Broadcast）给它分配 zxid，广播给 follower，多数派确认后提交，follower 按 zxid 顺序应用。读请求不经过 ZAB：每个 server 直接读本地数据库，并在回复里带上自己见过的最后一个 zxid。写有全序，读没有全序，这就是陈旧读的来源。
+所有写请求都发给 leader。leader 执行请求，给它分配 zxid，再通过原子广播（ZAB，ZooKeeper Atomic Broadcast）发给 follower，多数派确认后提交，follower 按 zxid 顺序应用。读不经过 ZAB：每个 server 直接读本地数据库，并在回复里带上自己见过的最后一个 zxid。写有全序，读没有全序，这就是陈旧读的来源。
 
-### 四条保证各管什么
+### 四个概念各管什么
 
 论文第 2.3 节给了两条基本保证，并讨论了通知顺序；陈旧读是这套设计的缺口。下面把四个概念分开。
 
@@ -773,38 +794,38 @@ ZooKeeper 的数据模型是一棵树，每个节点叫 znode（数据节点）�
 | 线性一致写（linearizable writes） | 所有写请求可序列化，并尊重实时先后 | 不覆盖读；并发写可任意排序 |
 | 客户端 FIFO 顺序（FIFO client order） | 同一客户端的请求按发送顺序执行 | 不保证不同客户端之间的顺序 |
 | 通知顺序（notification order） | watch 通知先于看到新状态；同一会话通知有序 | 不保证看到每一次变化，watch 会合并 |
-| 陈旧读（stale read） | 读本地副本，可能落后 | 不保证读到最新写；需要 sync 或写后读 |
+| 陈旧读（stale read） | 读本地副本，可能落后 | 不保证读到最新写；需要同步（sync）或写后读 |
 
 线性一致写说的是写与写之间：一个写完成后，后发的写必须排在它后面；并发写可以任意排序。它不保证读能看到最新的写，因为读根本不进 ZAB。
 
-FIFO 客户端顺序说的是同一客户端：先发的请求先执行。客户端换 server 时，新 server 要先追上它见过的 zxid，所以同一个客户端写完再读，至少能读到自己写的值；这不管别的客户端。
+客户端 FIFO 顺序说的是同一客户端：先发的请求先执行。客户端换 server 时，新 server 要先追上它见过的 zxid，所以同一个客户端写完再读，至少能读到自己写的值；这不管别的客户端。
 
 通知顺序说的是 watch：客户端注册监听后，如果节点变了，它一定先收到通知，再看到新状态；同一个会话的通知按顺序到达。watch 是一次性的，触发后要重新注册；如果节点在两次读之间变了三次，客户端可能只收到一次通知。
 
-陈旧读不是一条正面保证，而是前面几条的缺口：读可能返回任意一个已提交的前缀，不一定是最后一个写。需要读最新值时，客户端可以先做一次写，或者调用 sync（同步），让当前 server 应用完挂起的写，再做读。sync 是慢读，不是全局屏障。
+陈旧读不是一条正面保证，而是前面几条的缺口：读可能返回任意一个已提交的前缀，不一定是最后一个写。需要读最新值时，客户端可以先做一次写，或者调用同步（sync），让当前 server 应用完挂起的写，再做读。同步是慢读，不是全局屏障。
 
 ### 用 znode 做锁
 
-经典做法是顺序临时节点。三个客户端 C1、C2、C3 在 `/lock` 下分别创建 `/lock/lock-0000000001`、`0002`、`0003`；序号最小的 C1 持有锁，C2 监听 C1 的节点，C3 监听 C2 的节点，而不是所有人都监听 `/lock`，避免羊群效应（herd effect）。C1 的会话超时设为 10 秒；它在 t=10 s 没有心跳，ZooKeeper 删除它的临时节点，C2 收到通知，成为持有者。
+经典做法是顺序临时节点。三个客户端 C1、C2、C3 在 `/lock` 下分别创建 `/lock/lock-0000000001`、`0002`、`0003`；序号最小的 C1 持有锁，C2 监听 C1 的节点，C3 监听 C2 的节点，而不是所有人都监听 `/lock`，避免羊群效应（herd effect）。C1 的会话超时设为 10 秒；它连续 10 秒没有心跳，ZooKeeper 删除它的临时节点，C2 收到通知，成为持有者。
 
-如果 C1 只是被长时间 GC 暂停，它在 t=11 s 恢复后仍以为自己持有锁，但节点已经被删，C2 已经拿到锁。下游资源要用 fencing token（围栏令牌）拒绝旧持有者，例如把 znode 的序号或 zxid 带进每次写，资源端只接受更大的令牌。ZooKeeper 的锁方案不解决暂停，它只保证存活节点里序号最小的那个能拿到锁；暂停的旧持有者不在它的视野里。
+如果 C1 只是被长时间 GC 暂停，它在 t=11 s 恢复后仍以为自己持有锁，但节点已经被删，C2 已经拿到锁。工程上，下游资源要用围栏令牌（fencing token）拒绝旧持有者，例如把 znode 的序号或 zxid 带进每次写，资源端只接受更大的令牌。ZooKeeper 的锁方案不解决暂停，它只保证序号最小的存活节点能拿到锁；暂停的旧持有者不在它的视野里。
 
 ### 代价、边界和坏掉的样子
 
 写要过 leader 和多数派，延迟高于本地读；读可以水平扩展，但可能陈旧。watch 在服务端占内存，大量客户端监听同一个节点会有惊群风险；论文的锁方案用监听前驱来避免。会话超时太长，崩溃的客户端要很久才释放锁；太短，GC 或网络抖动会误判死亡。znode 默认每个最多 1 MB，不适合存大对象。
 
-边界和失败模式很多。watch 触发后没重新注册，会永远等不到下一次变化；session 过期会让临时节点和锁消失；读 follower 后误以为线性一致。锁持有者暂停超过会话超时，会出现两个自认为持有锁的客户端；ZAB 没有多数派时写不可用，读仍可能返回旧值。论文的 API 子集里，跨多个 znode 的更新没有事务，条件更新只针对单个 znode 的版本。
+边界和失败模式很多。watch 触发后没重新注册，会永远等不到下一次变化；会话过期会让临时节点和锁消失；读 follower 后误以为线性一致。锁持有者暂停超过会话超时，会出现两个自认为持有锁的客户端；ZAB 没有多数派时写不可用，读仍可能返回旧值。论文的 API 子集里，跨多个 znode 的更新没有事务，条件更新只针对单个 znode 的版本。
 
 ### 和实验的关系
 
-Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` 检查 owner；`TestManyClientsUnreliable` 在丢包下检查同一时刻只有一个持有者。它没有 session 和临时节点，官方页也说明客户端不会崩溃。Lab 3 的 `applyCh` 按 index 递增，相当于 ZAB 的按序交付；`TestFigure83C` 检查提交规则。Lab 4 的 `rsm.Submit` 和 `DoOp` 是复制状态机，`Get` 走日志所以是线性一致读；ZooKeeper 的读可以本地服务，这一点比 Lab 4 弱。
+Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` 检查 owner；`TestManyClientsUnreliable` 在丢包下检查同一时刻只有一个持有者。它没有会话和临时节点，官方页也说明客户端不会崩溃。Lab 3 的 `applyCh` 按 index 递增，相当于 ZAB 的按序交付；`TestFigure83C` 检查提交规则。Lab 4 的 `rsm.Submit` 和 `DoOp` 是复制状态机，`Get` 走日志所以是线性一致读；ZooKeeper 的读可以本地服务，这一点比 Lab 4 弱。
 
 ### 检查一下自己
 
 1. 为什么 ZooKeeper 的写线性一致，整体却不是？
 2. FIFO 客户端顺序保证什么？
 3. watch 保证什么、不保证什么？
-4. 什么时候需要 sync？
+4. 什么时候需要同步？
 5. 锁持有者被暂停超过会话超时，会发生什么？
 
 ### 答案要点
@@ -812,8 +833,8 @@ Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` �
 1. 只有写进 ZAB，有全序；读由各副本本地服务，可能落后于最后一个提交的写，所以整体不是线性一致。
 2. 同一个客户端的请求按发送顺序执行；换 server 时会追上客户端见过的 zxid，因此能读到自己的写，但不约束其他客户端。
 3. 保证变化后先收到通知、再看到新状态，同一会话通知有序；不保证每次变化都通知，watch 一次性且会合并。
-4. 另一个客户端写完，当前客户端要读最新值，而它连的副本可能落后时；sync 让该 server 应用完挂起的写，再读。
-5. 临时节点被删除，另一个客户端可能拿到锁；旧持有者恢复后仍可能自认为持有锁，下游要用 fencing token 拒绝它。
+4. 另一个客户端写完，当前客户端要读最新值，而它连的副本可能落后时；同步让该 server 应用完挂起的写，再读。
+5. 临时节点被删除，另一个客户端可能拿到锁；旧持有者恢复后仍可能自认为持有锁，下游要用围栏令牌拒绝它。
 
 **依据**：ZooKeeper 论文第 2.1 节（znode、会话、watch）、第 2.3 节（写、FIFO、通知顺序与陈旧读）、第 4.2 节（ZAB 与本地读）、第 4.4 节（会话心跳与迁移）；6.5840 官方 Lab 2、Lab 4 页。
 
@@ -821,7 +842,7 @@ Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` �
 
 ## 第 10 讲：Lab 3 常见问题与调试（Lab 3 Q&A） {#lec10}
 
-`TestPersist23C` 失败时，日志里出现两个任期 4 的 leader。S1 在重启前把票投给了自己，但 `persist()` 是在回复 `RequestVote` 之后才调用；重启后它忘了这一票，又投给了 S2。测试用 5 个 server、反复崩溃和分区把这个问题放大，最后同一个任期选出两个 leader。Raft 的 bug 大多不是算法不会写，而是某条规则漏了、某个状态没落盘、某把锁持有了太久。这一讲按 3A 到 3D 给出常见症状和排查路径。
+`TestPersist23C` 失败时，日志里出现两个任期 4 的领导者（leader）。S1 在重启前把票投给了自己，但 `persist()` 是在回复 `RequestVote` 之后才调用；重启后它忘了这一票，又投给了 S2。测试用 5 个 server、反复崩溃和分区把这个问题放大，最后同一个任期选出两个 leader。Raft 的 bug 大多不是算法不会写，而是某条规则漏了、某个状态没落盘、某把锁持有了太久。这一讲按 3A 到 3D 给出常见症状和排查路径。
 
 ### 按 3A 到 3D 加机制
 
@@ -829,7 +850,7 @@ Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` �
 
 ### 3A：选举能跑，一加故障就乱
 
-3A 的典型症状是选不出 leader、leader 频繁更换，或者 `TestReElection3A` 超时。先查选举超时（election timeout）是否随机：所有 follower 用同一个值会同时拉票，分票（split vote）反复发生。再查心跳是否超过每秒 10 次，以及 follower 是否只在合法 `AppendEntries` 上重置计时器；旧任期的 RPC 不能重置。
+3A 的典型症状是选不出 leader、leader 频繁更换，或者 `TestReElection3A` 超时。先查选举超时（election timeout）是否随机：所有跟随者（follower）用同一个值会同时拉票，分票（split vote）反复发生。再查心跳是否超过每秒 10 次，以及 follower 是否只在合法 `AppendEntries` 上重置计时器；旧任期的 RPC 不能重置。
 
 然后查收到更高任期是否立刻转 follower、清 `votedFor`，以及投票前是否比较候选人日志的最后一个任期和下标。`GetState` 返回的任期和 leader 标志也要和内部状态一致。`TestInitialElection3A`、`TestReElection3A` 和 `TestManyElections3A` 分别检查首次选举、旧 leader 失联后的重选，以及多次选举；先让它们在 `-race` 下稳定，再进 3B。
 
@@ -843,11 +864,24 @@ Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` �
 
 例如 S1 是任期 2 的 leader，日志是 `[1:1, 2:1, 3:2, 4:2, 5:2]`，`commitIndex = 5`；S2 的日志是 `[1:1, 2:1, 3:1]`。S1 先发 `prevLogIndex = 3`、`prevLogTerm = 2`，S2 拒绝并带回 `XTerm = 1`、`XIndex = 2`、`XLen = 3`。S1 在任期 1 的最后一条是下标 2，于是把 `nextIndex` 设为 3，重发 `prevLogIndex = 2`、`prevLogTerm = 1` 和下标 3 到 5 的条目；S2 截断下标 3，追加 3 到 5，`matchIndex` 变成 5，`commitIndex` 推进到 5，`applyCh` 依次送出 3、4、5。
 
+```text
+S1 (leader, term 2)  [1:1] [2:1] [3:2] [4:2] [5:2]   commitIndex=5
+S2 (follower)        [1:1] [2:1] [3:1]
+
+S1 -> prevLogIndex=3, prevLogTerm=2
+S2 -> reject: XTerm=1, XIndex=2, XLen=3
+S1 -> nextIndex[S2]=3
+S1 -> prevLogIndex=2, prevLogTerm=1, entries=[3:2][4:2][5:2]
+S2 -> truncate index 3, append 3..5, matchIndex=5
+```
+
+看什么：先对齐 `prevLogIndex`，再截断冲突后缀；回退一次跳过一个任期。
+
 ### 3C：重启后同任期两个 leader
 
-3C 的典型症状是 `TestPersist13C` 能过，`TestFigure83C` 或 churn 测试挂掉；重启后同一个任期出现两个 leader，或者已提交的条目消失。先查持久化顺序：`currentTerm`、`votedFor`、`log[]` 每次改变后先落盘，再回复 RPC；不能先回复再落盘。
+3C 的典型症状是 `TestPersist13C` 能过，`TestFigure83C` 或节点反复进出（churn）测试挂掉；重启后同一个任期出现两个 leader，或者已提交的条目消失。先查持久化顺序：`currentTerm`、`votedFor`、`log[]` 每次改变后先落盘，再回复 RPC；不能先回复再落盘。
 
-再查 `readPersist` 是否恢复了日志和投票，`commitIndex`、`lastApplied` 是否从 0 或快照位置重建。`labgob` 字段名小写会让编码丢字段，表现为重启后日志为空或任期归零。`TestPersist23C`、`TestPersist33C` 会扩大重启和分区；`TestUnreliableAgree3C`、`TestFigure8Unreliable3C` 和 churn 测试更容易暴露持久化窗口。
+再查 `readPersist` 是否恢复了日志和投票，`commitIndex`、`lastApplied` 是否从 0 或快照位置重建。`labgob` 字段名小写会让编码丢字段，表现为重启后日志为空或任期归零。`TestPersist23C`、`TestPersist33C` 会扩大重启和分区；`TestUnreliableAgree3C`、`TestFigure8Unreliable3C` 和反复进出测试更容易暴露持久化窗口。
 
 ### 3D：快照之后 apply 倒退
 
@@ -861,11 +895,11 @@ Lab 2 的锁是单机版：`Acquire` 用条件 `Put` 抢一个 key，`Release` �
 
 第二步逐条对照 Figure 2，尤其是任期检查、投票规则、提交规则和持久化时机。第三步查锁：持锁时不要发 RPC、不要 `time.Sleep`、不要往 `applyCh` 发送；RPC 回复回来时任期可能已经变了，重新拿锁后要重新检查假设。第四步用 `-race` 跑；官方评分不带 `-race`，但开发时必须用，竞态（race）是 Raft 最常见的 bug。第五步看测试失败生成的时间线（timeline），确认事件顺序。
 
-测试是抽样，不是证明；偶发失败要当成真 bug，连续跑三次再判断。3C 和 3D 在 `-race` 下可能跑十几分钟，`TestSnapshotInstall3D` 和 `TestSnapshotInstallUnreliable3D` 慢是正常的；官方页给的预算约 6 分钟实际时间，带 `-race` 约 10 分钟，单个测试超过 120 秒或全量超过 600 秒会判失败。
+测试是抽样，不是证明；偶发失败要当成真 bug，连续跑三次再判断。3C 和 3D 在 `-race` 下可能跑好几分钟，`TestSnapshotInstall3D` 和 `TestSnapshotInstallUnreliable3D` 慢是正常的；官方页给的预算约 6 分钟实际时间，带 `-race` 约 10 分钟，单个测试超过 120 秒或全量超过 600 秒会判失败。
 
 ### 和实验的关系
 
-Lab 4 会复用这份 Raft，4A 的 `TestRestartReplay4A` 和 4C 的 `TestSnapshotRPC4C` 经常暴露 3C/3D 的遗留问题；`rsm.Submit` 在 apply 后才返回，`Get` 也走日志，所以 Raft 的提交和快照错了，KV 的线性一致也会错。Lab 2 的 `ErrMaybe` 和版本号去重，会在 Lab 4 的 `Put` 重试里再次出现。`TestPersistPartitionUnreliableLinearizable4B` 还会用客户端历史检查线性一致；如果 Raft 偶发丢已提交条目，它会以 `ErrWrongLeader` 或错误结果的形式出现。
+Lab 4 会复用这份 Raft，4A 的 `TestRestartReplay4A` 和 4C 的 `TestSnapshotRPC4C` 容易暴露 3C/3D 的遗留问题；`rsm.Submit` 在 apply 后才返回，`Get` 也走日志，所以 Raft 的提交和快照错了，KV 的线性一致也会错。Lab 2 的 `ErrMaybe` 和版本号去重，会在 Lab 4 的 `Put` 重试里再次出现。`TestPersistPartitionUnreliableLinearizable4B` 还会用客户端历史检查线性一致；如果 Raft 偶发丢已提交条目，测试会表现为读到的值不对或超时。
 
 ### 检查一下自己
 
