@@ -131,7 +131,7 @@ readlink /proc/$pause/ns/net
 sudo nsenter -t "$pause" -n -- ip addr show lo
 ```
 
-预期 `readlink` 输出 `net:[4026531840]`，`lo` 是 `UP`。通过标志：pause 还活着，`/proc/<pid>/ns/net` 可打开，`nsenter` 能看到独立的 loopback。此时 `minipod delete demo` 应该能干净地杀掉 pause 并删掉状态目录。
+预期 `readlink` 输出的 inode 与宿主的不同（宿主通常是 `net:[4026531840]`，新建的 netns 一般是另一个更大的动态分配值），`lo` 是 `UP`。注意**不要把这个数字写死**：`4026531840` 正是 `PROC_DYNAMIC_FIRST`（`0xF0000000`），宿主 netns 通常拿到它，所以如果把 `4026531840` 当成"正确"，隔离失败反而会通过。硬性判据只有一个：`ping -c1 10.22.0.3` 能通（跨 netns 的地址），或 `nsenter` 后 `ip link` 里可见两个 veth 端点。通过标志：pause 还活着，`/proc/<pid>/ns/net` 可打开，`nsenter` 能看到独立的 loopback。此时 `minipod delete demo` 应该能干净地杀掉 pause 并删掉状态目录。
 
 ### 阶段 2：init 顺序，app 与 sidecar 并行
 

@@ -4,14 +4,16 @@ here="$(cd "$(dirname "$0")" && pwd)"
 source "$here/common.sh"
 
 require_repo
+require_implemented raft1 "Lab 3"
 
+# Raft is split into 3A–3D because the full suite takes ~10 minutes under -race.
 if quick; then
-  run_check "3A election" make -C "$SRC" RUN="-run 3A" raft1
+  run_make_tests raft1 RUN="-run 3A"
 else
-  run_check "3A election" make -C "$SRC" RUN="-run 3A" raft1
-  run_check "3B log replication" make -C "$SRC" RUN="-run 3B" raft1
-  run_check "3C persistence" make -C "$SRC" RUN="-run 3C" raft1
-  run_check "3D snapshot" make -C "$SRC" RUN="-run 3D" raft1
+  run_make_tests raft1 RUN="-run 3A"
+  run_make_tests raft1 RUN="-run 3B"
+  run_make_tests raft1 RUN="-run 3C"
+  run_make_tests raft1 RUN="-run 3D"
 fi
 
 finish

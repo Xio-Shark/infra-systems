@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# AOS3: Landlock availability probe, referenced by the lab page.
+#
+# Prints one line:
+#   abi=<N>          the kernel supports Landlock at ABI level N (>=1)
+#   unsupported      the syscall is missing or disabled
+#
+# Usage: ./tests/probe-landlock
+
+set -uo pipefail
+
+if [ ! -x "$(command -v python3)" ]; then
+  echo "unsupported  # python3 not available"
+  exit 0
+fi
+
+python3 - <<'PY'
+import ctypes, errno, platform, sys
+
+if not sys.platform.startswith("linux"):
+    print(f"unsupported  # 不是 Linux（{sys.platform}）；Landlock 是 Linux 专有的")
+    sys.exit(0)
+
+if platform.machine() not in ("x86_64", "aarch64", "arm64"):
+    print("unsupported  # unknown syscall numbers for", platform.machine()); sys.exit(0)
+
+SYS = {"x86_64": 444, "aarch64": 444, "arm64": 444}[platform.machine()]
+ENOSYS = 38
+
+libc = ctypes.CDLL(None, use_errno=True)
+# landlock_create_ruleset(NULL, 0, LANDLOCK_CREATE_RULESET_VERSION) -> abi
+LANDLOCK_CREATE_RULESET_VERSION = 1
+abi = libc.syscall(SYS, None, 0, LANDLOCK_CREATE_RULESET_VERSION)
+if abi < 0:
+    err = ctypes.get_errno()
+    name = errno.errorcode.get(err, str(err))
+    if err in (ENOSYS, errno.EOPNOTSUPP):
+        print("unsupported")
+    else:
+        # Anything else means the syscall exists but is unusable here, which
+        # for this lab is the same as unsupported — say why so it is not
+        # mistaken for a passing probe.
+        print(f"unsupported  # errno {name}")
+else:
+    print(f"abi={abi}")
+PY

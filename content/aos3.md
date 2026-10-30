@@ -60,11 +60,15 @@ Landlock 是可选层，`unsupported` 不阻塞实验，但报告里要写清哪
 
 `internal/cap/table.go` 是能力表：`grant`、`derive`、`revoke`、`lookup`，每个条目有 inode、权限位、过期时间和撤销代数。`cap/handle.go` 负责句柄编码与校验，句柄本身不可猜测，但只是查表键，不是内核对象。`broker/server.go` 接受 `cap_id`，执行代理操作；`broker/passfd.go` 用 `SCM_RIGHTS` 把工作区目录 fd 传给工具。`sandbox/openat2.go` 封装受限打开，`landlock_linux.go` 装规则，`seccomp.go` 装过滤器。
 
-`tests/` 是验收标准，不要改。逃逸程序只通过 CLI、继承 fd 和 Unix socket 与你的系统交互。
+仓库 `starters/aos/aos3/tests/` 有 `cap.sh`、`escape.sh`、`revoke.sh`、`probe-landlock`；`starters/aos/aos3/testdata/escape/` 是逃逸程序源码（`go build -o testdata/escape ./testdata/escape`）。复制 `tests/` 和 `testdata/` 到 `~/labs/aos3/` 再用；它们只通过 CLI、继承 fd 和 Unix socket 与你的系统交互。
 
 ## 接口与数据流
 
 能力分两层，混在一起会讲不清。控制面是 `cap_id`：agent 拿到的字符串，daemon 用它查表，决定能不能做某个操作，撤销就是删表。数据面是 fd：工作区目录的 `O_PATH` fd，通过 `SCM_RIGHTS` 传给工具，内核保证它指向真实 inode，不能伪造。控制面可撤销，数据面不能撤销；实验要求两条都实现，并对比。
+
+**`cap_id` 本身不是安全边界，除非你把它和调用者身份绑起来。** 它只是一张表里的键：如果 broker 收到 `cap_id` 就执行，任何能连上 socket 的进程都能拿别人的句柄用。所以查表时必须同时校验"谁在问"：用 `getsockopt(fd, SOL_SOCKET, SO_PEERCRED, …)` 拿到对端的 pid/uid/gid（Linux 还有 `SO_PEERPIDFD`，能避免 pid 复用），把它和 `Cap.Subject` 对应的主体列表比对，不匹配就 `denied`。AOS1 的 daemon 也同理，`SO_PEERCRED` 是这类 Unix socket 服务的准入检查，不是可选项。
+
+这也解释了为什么"句柄不可伪造"这个说法要限定范围：`cap_id` 不可**猜测**（随机串），但可**冒用**（别人拿到串就能用），除非加上对端身份校验。fd 才是不可伪造的——内核替你保证它指向哪个 inode。任务书要求两者都做，报告里要写清你用的是哪一种，以及漏掉身份校验时会发生什么。
 
 ```go
 type Rights uint32
@@ -106,7 +110,7 @@ agent ──cap_id──> aosd ──查表──> broker 操作 ──openat2(d
 
 | 对象 | 能撤销吗 | 手段 | 残余 |
 |---|---|---|---|
-| `cap_id`（代理路径） | 能 | 删表，`Epoch` 加一 | 无 |
+| `cap_id`（代理路径） | 能 | 删表，`Epoch` 加一；配合 `SO_PEERCRED` 校验调用者 | 无 |
 | 已复制的 fd | 不能 | 只能杀持有进程 | 已打开的 fd 继续可读 |
 | Landlock 规则 | 只能加严 | 再 `restrict_self` 一层 | 已打开的 fd、已 fork 的子进程 |
 | 进程 | 能 | `pidfd_send_signal` 加 `cgroup.kill` | 已产生的外部副作用 |
@@ -133,25 +137,51 @@ Landlock 负责进程级兜底：规则在 `exec` 前装好，之后所有打开
 
 `procfd` 是预先打开的 `/proc/self/fd` 目录 fd；绝对路径会先被 `BENEATH` 拒成 `EXDEV`。`fchdir` 这一行是重点：只做 `openat2` 的系统会在这一行失败，这正是“单次检查不等于权限边界”的证据。
 
+## CLI 契约 {#cli}
+
+`tests/` 下的脚本只通过下面这些命令和你说话；参数名可以不同，语义必须一致。所有命令 stdout 是单行 JSON，成功退出 0。
+
+| 命令 | 语义 |
+|---|---|
+| `aos3 cap grant --subject S --path DIR --rights read[,write] --ttl 10m` | 返回 `{"cap_id":…,"dev":…,"ino":…,"subject":…,"rights":…,"expires":…}` |
+| `aos3 cap derive --cap C --path SUB --rights read` | 派生只能收窄；加宽返回 `{"status":"denied"}` 且退出非零 |
+| `aos3 cap revoke --cap C` | 撤销代理句柄，下一次调用立刻失效 |
+| `aos3 cap list` | 列出存活句柄；已撤销的不出现 |
+| `aos3 cap probe --pid P` | 报告该进程持有的 fd 是否仍可读：`{"fd_still_reads":0|1}` |
+| `aos3 open --cap C --path P [--hold D]` | 用句柄打开文件；`--hold` 让进程持 fd 一段时间（用于撤销对照） |
+| `aos3 kill --pid P` | `pidfd_send_signal` + `cgroup.kill`，并等到 `cgroup.events` 的 `populated=0` |
+| `aos3 audit --cap C [--since 10m]` | 列出该句柄的全部使用事件 |
+
+`testdata/escape` 是一个可执行文件，按 argv[1] 选一个逃逸用例（`dotdot`、`abs`、`symlink`、`magic`、`procfd`、`fchdir`、`chroot`、`bind`、`handle`、`ptrace`、`processvm`、`uring`、`leak`）。它从 fd 3 拿到能力目录，只用 `openat2(RESOLVE_BENEATH|RESOLVE_NO_MAGICLINKS)` 打开，并把结果压成一行：
+
+```text
+DENIED EXDEV dotdot      内核拒绝（期望）
+ESCAPED opened ../etc    成功了（逃逸）
+ERROR ENOSYS uring       既不是拒绝也不是逃逸（过滤器坏了）
+```
+
+`tests/escape.sh` 只接受 `DENIED`；`ESCAPED` 和 `ERROR` 都判失败，因为后者通常意味着你的过滤器把系统调用变成了 `ENOSYS`，看起来"被挡住"其实是功能坏了。
+
 ## 阶段拆解
 
-阶段 1 做能力表，不传 fd。实现 `cap.grant`、`cap.derive`、`cap.revoke`、`cap.list`，用 JSON 请求。跑 `./tests/cap.sh`，预期 `derive_ok=1 widen_denied=1 expired_denied=1`。派生一个权限更大的句柄必须返回 `denied`，不是悄悄截断。
+阶段 1 做能力表，不传 fd。实现 `cap.grant`、`cap.derive`、`cap.revoke`、`cap.list`，用 JSON 请求。跑 `./tests/cap.sh`：派生到子目录成功、加宽被 `denied`、过期句柄被拒、撤销后 `cap list` 里不再出现。派生一个权限更大的句柄必须返回 `denied`，不是悄悄截断。
 
-阶段 2 把 fd 交给工具。`cap.grant` 返回 `cap_id` 和 `dev/ino`，代理路径用 `SCM_RIGHTS` 传 `O_PATH|O_DIRECTORY` fd。工具所有打开都走 `openat2`，相对这个 fd。跑 `./tests/escape.sh --cases dotdot,abs,symlink,magic`，预期四行 `DENIED`，`strace` 里的 errno 与表一致。
+阶段 2 把 fd 交给工具。`cap.grant` 返回 `cap_id` 和 `dev/ino`，代理路径用 `SCM_RIGHTS` 传 `O_PATH|O_DIRECTORY` fd。工具所有打开都走 `openat2`，相对这个 fd。跑 `./tests/escape.sh --cases dotdot,abs,symlink,magic`，预期四行 `DENIED`（绝对路径是 `EXDEV`），`strace` 里的 errno 与表一致。
 
-阶段 3 加 seccomp。默认拒绝，放行 `execve`、`openat`、`read`、`write`、`mmap`、`brk`、`exit_group` 和 Landlock 所需 syscall；封掉上表里的逃逸工具。跑 `./tests/escape.sh --cases bind,handle,ptrace`，预期 `DENIED`；`grep Seccomp /proc/<工具>/status` 为 2。
+阶段 3 加 seccomp。默认拒绝，放行 `execve`、`openat`、`read`、`write`、`mmap`、`brk`、`exit_group` 和 Landlock 所需 syscall；封掉上表里的逃逸工具。跑 `./tests/escape.sh --cases bind,handle,ptrace`，预期 `DENIED EPERM`；`grep Seccomp /proc/<工具>/status` 为 2。
 
-阶段 4 加 Landlock。用 `landlock_create_ruleset` 建规则，只允许工作区目录的读写和 `/usr`、`/lib` 的执行，`no_new_privs` 后 `restrict_self`，再 `exec`。跑 `./tests/escape.sh --cases fchdir`，有 Landlock 时 `DENIED`，没有时输出 `ESCAPED`；这个对照要写进报告。探测输出 `abi=1` 或更高，规则按支持的权限位降级。
+阶段 4 加 Landlock。用 `landlock_create_ruleset` 建规则，只允许工作区目录的读写和 `/usr`、`/lib` 的执行，`no_new_privs` 后 `restrict_self`，再 `exec`。跑 `./tests/escape.sh --case fchdir`，有 Landlock 时 `DENIED EACCES`，没有时输出 `ESCAPED`；这个对照要写进报告（脚本会把 `ESCAPED` 判失败，所以没装 Landlock 时用 `AOS_ESCAPE` 指向一个未加固的构建做对照，而不是让脚本放行）。`tests/probe-landlock` 输出 `abi=1` 或更高，规则按支持的权限位降级。
 
-阶段 5 做撤销。撤销代理句柄后立刻调用一次操作，预期 `denied`；再让一个工具持有已传出的 fd，撤销后它仍能读，记录 `fd_still_reads=1`，然后 `pidfd_send_signal` 加 `cgroup.kill` 结束它，确认 `populated=0`。跑 `./tests/revoke.sh`，预期 `broker_denied=1 fd_still_reads=1 killed=1`。
+阶段 5 做撤销。撤销代理句柄后立刻调用一次操作，预期 `denied`；再让一个工具持有已传出的 fd，撤销后它仍能读，记录 `fd_still_reads=1`，然后 `pidfd_send_signal` 加 `cgroup.kill` 结束它，确认 `populated=0`。跑 `./tests/revoke.sh`：撤销后 broker 立刻拒绝、持有 fd 的进程如实报 `fd_still_reads=1`、随后被杀且 `populated=0`。
 
-阶段 6 补齐审计和矩阵。每次能力使用写一条事件：时间、subject、cap_id、inode、操作、结果、errno。跑 `./tests/escape.sh --all`，预期 `denied=11 escaped=0`；`./aos3 audit --cap cap_7f3a` 能列出该能力的全部使用。
+阶段 6 补齐审计和矩阵。每次能力使用写一条事件：时间、subject、cap_id、inode、操作、结果、errno。跑 `./tests/escape.sh --all`，最后一行应是 `summary denied=13 escaped=0 errors=0`（环境不支持的用例计入 `skip`）；`./aos3 audit --cap cap_7f3a` 能列出该能力的全部使用。
 
 ## 验收清单
 
 没有 judge，人工验收。提交 `evidence/`，每个用例一个子目录，包含 `cmd.txt`、`out.txt`、`strace.txt`、`notes.md`。清单：
 
 - [ ] `cap.grant` 返回句柄、dev/ino、权限和过期时间；授权判断不看路径。
+- [ ] broker 用 `SO_PEERCRED`（或 `SO_PEERPIDFD`）校验调用者身份：用另一个 uid 的进程拿 `cap_id` 调用必须 `denied`。
 - [ ] 派生更大权限返回 `denied`；派生到子目录后打不开兄弟目录；`Delegable=false` 的句柄不能转交。
 - [ ] 过期句柄和已撤销句柄的下一次操作都返回 `denied`。
 - [ ] 逃逸矩阵每行都有 errno 和 `strace`，`escaped=0`。

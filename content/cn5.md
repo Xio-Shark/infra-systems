@@ -168,7 +168,7 @@ if step != nil { execute(step); record(step) }
 - [ ] 控制器 `kill -9` 三次，重启后不重复建 Pod。
 - [ ] 混沌至少覆盖三类，每类 3 次；做满五类更好，做不了的写明原因。
 - [ ] 指标覆盖每个容器，日志带 pod 和 container 标签。
-- [ ] 非 root 运行，drop capabilities，rootfs 只读，默认 seccomp。
+- [ ] 非 root 运行，drop capabilities，rootfs 只读，默认 seccomp。CN1–CN4 的代码是 root + 可写 rootfs，这一步要自己改：`setuid` 后 exec、`--read-only` 的 rootfs 用 tmpfs 挂可写目录、`prctl(PR_SET_NO_NEW_PRIVS)` + seccomp 默认拒绝；讲义第 10 讲给了原则，具体改法按你的实现定。做不到就在报告里写清哪一项没做、为什么。
 - [ ] 10 分钟 demo 能现场回答：sidecar 挂了会怎样、节点断电会怎样、两个 Pod 抢同一个卷会怎样。
 - [ ] 故障报告六段齐全，附日志、指标和时间线。
 

@@ -1,11 +1,15 @@
 // CN1 起步骨架：一个最小的容器运行时。
 //
 // 这个骨架把“命令行解析 + 父子进程切换 + 退出码透传”这一段已经搭好并验证可编译，
-// 剩下三处标着 TODO 的地方正是实验的核心，需要你自己实现：
+// 剩下 7 处标着 TODO 的地方正是实验的核心，需要你自己实现：
 //
-//  1. childStage：在新 namespace 里挂 /proc、切到 rootfs
-//  2. cgroup：把子进程放进 cgroup v2 子组并设 memory.max
-//  3. sethostname：在 UTS namespace 里设置 hostname
+//  2. cgroup：建 cgroup v2 子组并设上限（Start 之前）
+//  3. cgroup：Start 之后把子进程迁进 cgroup.procs
+//  4. childStage：把 / 的 mount propagation 设成 private
+//  5. childStage：bind mount rootfs 到自己，使其成为挂载点
+//  6. childStage：在新 PID namespace 里挂容器本地 /proc
+//  7. childStage：pivot_root 到 rootfs 并卸掉旧根
+//  8. childStage：在 UTS namespace 里 sethostname
 //
 // 完整验收标准见 judge/contracts/infra02.md，检查项见 content/cn1.md 的“验收与测试”。
 //

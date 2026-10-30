@@ -149,24 +149,24 @@
 
 **和实验的关系**：Lab 2 的 lease/版本号思路在大规模系统里的样子。
 
-### [AWS Lambda (2023)](https://arxiv.org/abs/2305.13162) {#lambda}
+### [On-demand Container Loading in AWS Lambda (2023)](https://arxiv.org/abs/2305.13162) {#lambda}
 
-**一句话**：Serverless 平台的内部：隔离、冷启动、快照恢复、Firecracker。
+**一句话**：Lambda 怎么把最大 10 GiB 的容器镜像按块、按需送到函数实例：缓存、去重、收敛加密、纠删码。
 
 **阅读重点**：
-- 为什么用 microVM 而不是容器。
-- 冷启动的优化（snapshot/restore）。
-- 多租户隔离和安全边界。
+- 大镜像和"快速扩容"的矛盾：单客户每秒 15000 个新容器，冷启动低到 50 ms。
+- 块级按需加载怎么避免把整个镜像拉下来。
+- 缓存分层、去重和收敛加密的取舍。
 
-**和实验的关系**：如果你做 agent runtime 或进程内核，这一篇和隔离/恢复问题很接近。
+**和实验的关系**：讲的是分发和存储，不是隔离。如果你要找 Firecracker 的隔离模型和 125 ms 启动，看 INFRA 02 的 [Firecracker (2020)](#firecracker)；这一篇对应的是"镜像层怎么快速落地"。Lambda 的完整内部架构没有公开论文。
 
 ### [Ray (2018)](https://arxiv.org/abs/1712.05889) {#ray}
 
-**一句话**：分布式 Python 的 task/actor 模型，强调调度和 lineage。
+**一句话**：分布式 Python 的 task/actor 模型，强调调度和 lineage 容错。
 
 **阅读重点**：
-- task graph 和 lineage-based recovery。
-- actor 的状态管理。
+- task graph 和 lineage-based recovery（含 actor 方法链的 stateful edge 与 checkpoint）。
+- 2018 版的两级调度器，以及它后来为什么被换掉：对照读 [Ownership: A Distributed Futures System for Fine-Grained Tasks (NSDI 2021)](https://www.usenix.org/conference/nsdi21/presentation/wang-stephanie)。MIT 6.5840 Spring 2026 的 LEC 18 指定读的是后者，不是这篇。
 - 调度器的取舍。
 
 **和实验的关系**：和 agent 任务调度、DAG 执行相关；如果你做 agent runtime，会遇到相似的调度和恢复问题。
@@ -266,6 +266,17 @@
 ## INFRA 03 · 论文
 
 > Agent OS 是探索方向，这些论文和系统不代表主流共识。读的时候重点看它们各自解决了什么、没解决什么，不要把这些设计当成标准答案。
+
+### [The Chubby lock service (2006)](https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/) {#chubby}
+
+**一句话**：Google 的粗粒度锁服务；sequencer 是"单调递增的锁令牌"，用来让资源端拒绝旧持有者的写。
+
+**阅读重点**：
+- 为什么粗粒度锁比细粒度锁更容易用、也更容易成为瓶颈。
+- sequencer 怎么生成、资源端怎么检查它（这正是 fencing token 的原始形态）。
+- 会话与 lease 的关系，以及 master 选举怎么建在它上面。
+
+**和课程的关系**：INFRA 03 第 9 讲的 fencing 直接来自这里；AOS5 的 epoch 就是 sequencer 的一个实现。
 
 ### [seL4 (2009)](https://www.sigops.org/s/conferences/sosp/2009/papers/klein-sosp09.pdf) {#sel4}
 

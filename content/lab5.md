@@ -8,7 +8,9 @@
 >
 > [上一个：Lab 4](lab4.html) · [返回作业](labs.html)
 >
-> **难度** ★★★★ · **先修** Lab 4（含 4C）+ 第 11–13 讲 · **时间** 10–15 小时 · **最小通过** 5A；**完整通过** 5A–5C
+> **难度** ★★★★ · **先修** Lab 4（含 4C）+ 第 11–13 讲 · **时间** 10–15 小时 · **最小通过** 5A 的 14 个测试（judge 显示 `PASS`）；**完整通过** 5A–5C 共 23 个
+>
+> judge 的 `min_pass` 与这一行一致，写在 `judge/courses/infra01.json`；改这一行就要同步改那里。
 
 ## 你将完成什么
 
@@ -337,7 +339,7 @@ ok      6.5840/shardkv1 10.542s
 4. 全部搬完后 promote：`Get` 当前版本，`Put(currentKey, next.String(), version)`。`ErrVersion` 说明别人先 promote，重读并确认 `current.Num >= next.Num` 后返回。
 5. `ChangeConfigTo` 要同步：测试在它返回后马上 `Query` 检查成员，不要起后台 goroutine 做迁移。
 
-`TestDeleteBasic5A` 用 1000 字节的 value 和 `maxraftstate=10000` 检查 `Gid1`、`Gid2` 的 snapshot 总和不超过搬走前的 `sz + 10000`；源组没真删或目标组复制了整份旧快照都会失败。
+`TestDeleteBasic5A` 用的是 `VALUESIZE=10000`（每个 value 10000 字节）和 `MAXRAFTSTATE=1000`（快照阈值 1000 字节），检查搬走之后 `Gid1`、`Gid2` 的 snapshot 总和不超过搬走前的 `sz + 10000`。value 远大于快照阈值，所以靠"日志还没截断"蒙不过去：源组不真删 shard，或者目标组把整份旧快照复制过去，总和都会超。
 
 跑：
 

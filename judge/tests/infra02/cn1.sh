@@ -120,11 +120,15 @@ else
 fi
 
 # 10. Best-effort: no leaked PID namespace after the container exits.
+# Without root (or with a hardened procfs) `lsns` returns nothing, and "0 <= 0"
+# would silently pass a submission that leaks namespaces. Treat that as SKIP.
 if command -v lsns >/dev/null 2>&1; then
   before=$(lsns -t pid -n 2>/dev/null | wc -l | tr -d ' ')
   run_sub -- /bin/sh -c 'true' >/dev/null 2>&1
   after=$(lsns -t pid -n 2>/dev/null | wc -l | tr -d ' ')
-  if [ -n "$before" ] && [ -n "$after" ] && [ "$after" -le "$before" ]; then
+  if [ -z "$before" ] || [ "$before" -eq 0 ] || [ -z "$after" ]; then
+    check SKIP "leave no extra PID namespace" "lsns 读不到 PID namespace（需要 root 或未受限的 /proc）"
+  elif [ "$after" -le "$before" ]; then
     check PASS "leave no extra PID namespace"
   else
     check FAIL "leave no extra PID namespace" "before=$before after=$after"
@@ -140,13 +144,49 @@ else
   check FAIL "set a separate hostname" "rootfs needs hostname; inner='$inner_host' outer='$outer_host'"
 fi
 
-# 12. Accept --memory. Enforcement (OOM) remains a manual acceptance item.
+# 12. Accept --memory.
 out=$(run_sub --memory 64M -- /bin/sh -c 'echo mem-ok' 2>&1)
 rc=$?
 if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'mem-ok'; then
   check PASS "accept a memory limit"
 else
   check FAIL "accept a memory limit" "exit $rc"
+fi
+
+# 13. The limit must actually exist while the container runs. Black-box: count
+# cgroups whose memory.max equals 64M before and during a run. Enforcement
+# (an OOM kill) stays a manual item, but "never set memory.max at all" is
+# mechanically detectable. SKIP when the caller cannot read the cgroup tree.
+mem_limit=67108864  # 64M in bytes
+cgroup_base="/sys/fs/cgroup"
+if [ -r "$cgroup_base/cgroup.controllers" ]; then
+  count_limited() {
+    find "$cgroup_base" -maxdepth 8 -name memory.max -type f 2>/dev/null |
+      while IFS= read -r f; do
+        [ "$(cat "$f" 2>/dev/null)" = "$mem_limit" ] && echo "$f"
+      done | wc -l | tr -d ' '
+  }
+  before=$(count_limited)
+  run_sub --memory 64M -- /bin/sh -c 'sleep 1' >/dev/null 2>&1 &
+  bg=$!
+  saw_limit=0
+  i=0
+  while [ "$i" -lt 40 ]; do
+    if [ "$(count_limited)" -gt "$before" ]; then
+      saw_limit=1
+      break
+    fi
+    sleep 0.05
+    i=$((i + 1))
+  done
+  wait "$bg" 2>/dev/null
+  if [ "$saw_limit" -eq 1 ]; then
+    check PASS "set memory.max while running"
+  else
+    check FAIL "set memory.max while running" "运行期间没有出现 memory.max=$mem_limit 的 cgroup"
+  fi
+else
+  check SKIP "set memory.max while running" "$cgroup_base 不可读（需要 cgroup v2 且能访问 host 的 cgroup 树）"
 fi
 
 finish

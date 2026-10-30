@@ -23,6 +23,23 @@ cd ~/labs/aos5
 
 第三条输出 `verified until seq=N`。核心场景：A 拿到 `epoch=1` 后被 `SIGSTOP` 暂停，租约过期，B 拿到 `epoch=2` 并写入；A 恢复后继续用 `epoch=1` 写，必须收到 `status: "fenced"` 和 `max_epoch: 2`。拒绝必须发生在存储端，不能靠 A 自己检查时间。
 
+## CLI 契约 {#cli}
+
+`tests/` 下的脚本只通过下面这些命令和你说话；参数名可以不同，语义必须一致。所有命令 stdout 是单行 JSON，成功退出 0。
+
+| 命令 | 语义 |
+|---|---|
+| `aos5 lease acquire --resource R --owner O --ttl 2s` | 返回 `{"epoch":N}`；旧租约过期后发更大的 epoch |
+| `aos5 lease state --resource R` | 返回 `{"max_epoch":N,"owner":…,"expires":…}`；`max_epoch` 是存储端持久化的值 |
+| `aos5 lease renew --resource R --owner O --epoch N` | 续约；epoch 已过期返回 `expired` |
+| `aos5 lease release --resource R --owner O --epoch N` | 主动释放 |
+| `aos5 write --resource R --epoch N --data D` | 存储端比较 `epoch < max_epoch` 就返回 `fenced` + `max_epoch`，否则写入 |
+| `aos5 audit verify --log FILE` | 从 `seq=1` 逐条校验 hash chain，输出 `verified until seq=N`，坏的第一条报 `seq=<n>` |
+| `aos5 audit query --task T [--from N] [--limit N]` | 按 task 和 seq 范围过滤 |
+| `aos5 audit replay --task T --workspace DIR` | 从事件流重建工作区 |
+
+`write` 的失败信息必须带 `max_epoch`，调用方才能判断自己落后多少；`fence-stress.sh` 和 `dual-owner.sh` 都依赖这一点。审计日志的路径由 `--log` 指定，默认 `/tmp/aos5/audit.jsonl`。
+
 ## 开始之前
 
 先读[第 9 讲](agent-os.html#aos9)和[第 10 讲](agent-os.html#aos10)。第 9 讲解释租约为什么需要单调 token；第 10 讲解释为什么 agent 自己写的日志不是证据。AOS2 的 commit 路径要已经能跑，AOS4 的快照可以选做。
@@ -49,7 +66,7 @@ kill -STOP $$ && kill -CONT $$    # 确认能暂停自己，返回提示符即�
   internal/fence/      # max_epoch、写检查
   internal/audit/      # 追加写、hash chain、重放
   internal/workspace/  # AOS2 commit + fence
-  tests/               # 双主、重启、篡改、重放
+  tests/               # 双主、篡改、fence 压测（从 starters/aos/aos5/tests/ 复制）
 ```
 
 不要改 AOS2 的 `rename` + `fsync` 顺序，也不要让客户端决定 `epoch` 是否有效。`epoch` 只能由租约服务发，检查只能由存储端做。审计 schema 在阶段 4 定下后不要改字段名。
@@ -203,7 +220,7 @@ diff /tmp/aos5/expected.sha /tmp/aos5/replay.sha
 
 ## 验收清单
 
-人工验收，提交时附命令记录、日志片段和失败注入点。
+人工验收，提交时附命令记录、日志片段和失败注入点。仓库 `starters/aos/aos5/tests/` 有三个脚本可直接跑：`dual-owner.sh`（暂停旧 owner）、`tamper.sh`（改/删/截断日志）、`fence-stress.sh`（并发写压测）。复制到 `~/labs/aos5/tests/` 再用。
 
 - [ ] `Acquire/Renew/Release` 的正常、过期、重启三种路径各一份输出。
 - [ ] 租约服务 `kill -9` 重启后，下一个 `epoch` 严格大于重启前，附两次 `Acquire` 输出。
@@ -248,7 +265,7 @@ fencing 的竞态用压力测试抓：
 ./tests/fence-stress.sh --writers 8 --iterations 1000 --jitter 5ms
 ```
 
-脚本让多个 writer 交错写，检查 `max_epoch` 单调不减、每个成功写的 epoch 不小于当时的最大值。出现回退，先查更新是不是在锁外。
+脚本让多个 writer 交错写，检查 `max_epoch` 单调不减、每个成功写的 epoch 不小于当时的最大值；读取 `max_epoch` 用 `./aos5 lease state --resource RES`（返回 `{"max_epoch":N}`），所以这个子命令也要实现。出现回退，先查更新是不是在锁外。
 
 验证脚本要独立于写入代码：按行读，检查 `seq` 连续，逐条重算 `hash`，再把链头和锚点比对。只算最后一条无法定位第一个坏 `seq`。
 

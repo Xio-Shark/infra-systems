@@ -10,7 +10,9 @@
 >
 > **对照**：Raft 论文 Figure 2、`raft-structure.txt`、`raft-locking.txt`（可选）。
 >
-> **难度** ★★★★ · **先修** Lab 1/2 + 第 6、7、8 讲 · **时间** 30–40 小时 · **最小通过** 3A+3B；**完整通过** 3A–3D
+> **难度** ★★★★ · **先修** Lab 1/2 + 第 6、7、8 讲 · **时间** 30–40 小时 · **最小通过** 3A+3B 的 13 个测试（judge 显示 `PASS`）；**完整通过** 3A–3D 共 28 个
+>
+> judge 的 `min_pass` 与这一行一致，写在 `judge/courses/infra01.json`；改这一行就要同步改那里。
 
 ## 你将完成什么
 
@@ -25,10 +27,9 @@ make RUN="-run 3D" raft1
 ```
 
 四组共 28 个测试：3A 3、3B 10、3C 8、3D 7。官方样例的收尾分别是 `ok 6.5840/raft1 22.095s`、`71.716s`、`180.983s`、`301.406s`，都带 `-race`。
-
 通过不是只看最后一行。3A 要求每个 term 最多一个 leader，旧 leader 失联后 5 秒内选出新 leader。3B 要求已提交日志在所有 server 上一致，`applyCh` 按 index 递增；3C 要求重启后 `currentTerm`、`votedFor`、`log` 与崩溃前一致。3D 要求截断日志后仍能让落后 follower 追上，且快照不能把状态推回去。
 
-评分脚本对 Lab 3–5 有统一限制：全部测试超过 600 秒，或单个超过 120 秒，算失败。开发用 `-race`，判分不带。`make raft1` 把 28 个测试放同一进程，官方 `-race` 总耗时约 576 秒，接近默认 10 分钟超时；平时分 3A–3D 跑。
+评分脚本按 3A–3D 分组跑，每组一条 `CHECK`；`judge/courses/infra01.json` 给 Lab 3 的超时是 1800 秒，不是 MIT 的 600 秒。judge 不额外传 `-race`：MIT 的 Makefile 默认 `RACE=-race`，所以 judge 调用的 `make raft1` 本身就带 race detector。`make raft1` 把 28 个测试放同一进程，官方 `-race` 总耗时约 576 秒，平时分 3A–3D 跑更省时间。
 
 ## 开始之前
 

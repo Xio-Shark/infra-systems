@@ -8,7 +8,9 @@
 >
 > [上一个：Lab 1](lab1.html) · [返回作业](labs.html) · [下一个：Lab 3](lab3.html)
 >
-> **难度** ★★ · **先修** Lab 1 + 第 2、8 讲 · **时间** 6–10 小时 · **最小通过** `make RUN="-run Reliable" kvsrv1` + `lock1` 的 Reliable；**完整通过** `kvsrv1` + `lock1` 全绿
+> **难度** ★★ · **先修** Lab 1 + 第 2、8 讲 · **时间** 6–10 小时 · **最小通过** `kvsrv1` 的 Reliable 三件套 + `lock1` 的四个 Reliable 测试（judge 显示 `PASS`）；**完整通过** `kvsrv1` + `lock1` 全绿
+>
+> judge 的 `min_pass` 与这一行一致，写在 `judge/courses/infra01.json`；改这一行就要同步改那里。
 
 ## 你将完成什么
 

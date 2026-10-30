@@ -43,7 +43,7 @@ SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs \
   ./judge/run.sh infra02 cn1
 ```
 
-CN1 的检查覆盖命令执行、退出码、stderr、PID/mount/network/IPC namespace、rootfs 切换、容器本地 `/proc`（宿主 PID 不可见）、hostname、`--memory` 参数，以及有 `lsns` 时的残留 PID namespace 检查；内存上限的实际执行（OOM）仍是人工验收项。相对路径的 `SUBMISSION` / `CN1_ROOTFS` 按调用者的当前目录解析。
+CN1 的检查覆盖命令执行、退出码、stderr、PID/mount/network/IPC namespace、rootfs 切换、容器本地 `/proc`（宿主 PID 不可见）、hostname、`--memory` 参数、运行期间是否真的存在 `memory.max=64M` 的 cgroup，以及有 `lsns` 时的残留 PID namespace 检查；内存上限的实际执行（OOM kill）仍是人工验收项。相对路径的 `SUBMISSION` / `CN1_ROOTFS` 按调用者的当前目录解析。
 
 其他实验的接口还没冻结；测试脚本按 `tests/infra02/cn1.sh` 的格式补。没有 `SUBMISSION` 或 `CN1_ROOTFS` 时，judge 会显示 `SKIP`，不会假装通过。
 

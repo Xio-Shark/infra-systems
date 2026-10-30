@@ -82,6 +82,7 @@ def run_lab(
         "duration": 0.0,
         "detail": "",
         "quick": quick,
+        "min_pass_ok": False,
     }
     if not script.is_file():
         result["detail"] = f"missing test script: {script.relative_to(JUDGE)}"
@@ -132,6 +133,22 @@ def run_lab(
         except ProcessLookupError:
             pass
         stdout, stderr = proc.communicate()
+    except KeyboardInterrupt:
+        # Ctrl-C must not leave `go test -race` and the coordinator running: the
+        # lab script starts a new session, so the terminal's SIGINT never
+        # reaches it. Kill the whole group before letting the interrupt through.
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
+        stop_heartbeat.set()
+        hb.join(timeout=1)
+        print(
+            f"\ninterrupted: killed the process group for {course_name}/{lab_id}",
+            file=sys.stderr,
+        )
+        raise
     finally:
         stop_heartbeat.set()
         hb.join(timeout=1)
@@ -171,22 +188,50 @@ def run_lab(
             passed = sum(1 for c in result["checks"] if c["status"] == "PASS")
             result["score"] = round(result["weight"] * passed / len(result["checks"]))
 
+        # A lab may declare a subset of checks as "minimum pass" (see
+        # courses/*.json: min_pass). Those checks must all pass; the rest only
+        # affects the score. Without this, a reader who finishes exactly what
+        # the lab page calls "最小通过" would see FAIL 0/20.
+        min_pass = lab.get("min_pass") or []
+        required = [c for c in result["checks"] if c["name"] in min_pass]
+        min_pass_ok = all(c["status"] == "PASS" for c in required) if required else False
+        result["min_pass_ok"] = min_pass_ok
+        missing_required = sorted(
+            set(min_pass) - {c["name"] for c in result["checks"]}
+        )
+        # A lab whose required tests never ran is not "20/20 with a warning":
+        # the score must be visibly below full marks.
+        if missing_required and result["score"] >= result["weight"]:
+            result["score"] = max(0, result["weight"] - 1)
+
         if not result["checks"] and total is None:
             result["detail"] = "test script produced no CHECK/SCORE lines"
         elif result["checks"] and all(
             c["status"] == "SKIP" for c in result["checks"]
         ):
             result["status"] = "SKIP"
-        elif result["score"] >= result["weight"]:
+        elif result["score"] >= result["weight"] and min_pass_ok and not missing_required:
             result["status"] = "PASS"
+            result["detail"] = ""
+        elif min_pass_ok and not missing_required:
+            # The lab's stated minimum is met, but not every test is green.
+            result["status"] = "PASS"
+            result["detail"] = (
+                "最小通过：必做项全部 PASS，其余未通过；完整通过需要全部测试"
+            )
         elif result["score"] > 0:
             result["status"] = "PARTIAL"
+            if missing_required:
+                result["detail"] = "缺少必做项结果：" + ", ".join(missing_required)
         else:
             result["status"] = "FAIL"
 
         if proc.returncode != 0 and result["status"] == "PASS":
-            result["status"] = "PARTIAL"
-            result["detail"] = f"test script exited {proc.returncode}"
+            if result.get("min_pass_ok"):
+                pass  # exit code is non-zero because optional tests failed
+            else:
+                result["status"] = "PARTIAL"
+                result["detail"] = f"test script exited {proc.returncode}"
 
         # --quick is a smoke test. It can show progress, but it is not a pass.
         if quick and result["status"] == "PASS":

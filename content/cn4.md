@@ -7,6 +7,8 @@
 > [返回作业](labs.html) · [上一个：CN3](cn3.html) · [下一个：CN5](cn5.html)
 >
 > **难度** ★★★ · **先修** CN1/CN2 + 第 8 讲 · **时间** 8–12 小时 · **最小通过** 单文件 commit/rollback；**完整通过** manifest + 崩溃恢复
+>
+> **和 AOS2 的关系**：CN4 和 [AOS2](aos2.html) 讲的是同一件事——多文件原子发布——但角度不同。CN4 从容器侧出发：多个容器共享一个 overlayfs 工作区，重点是 copy-up、whiteout 和"为什么换 mount 不能原子"。AOS2 从 agent 运行时出发：同一个工作区要被 agent 反复改写和回滚，重点转向 journal 状态机、冲突检测和外部副作用账本。两个都做是有意的，但**不要照着 CN4 抄一遍再交 AOS2**：提交点、恢复规则和验收项都不一样，报告里要写清你复用和重写了哪些部分。只打算做一门时，做 CN4（它更基础），AOS2 的阶段 5–6（冲突与副作用）可以当延伸阅读。
 
 ## 你将完成什么
 
@@ -176,12 +178,20 @@ sudo ./cn4 status
 
 通过标志：`recover` 退出码为 0；`verify` 通过；`status` 的 `state` 是 `committed` 或 `aborted`；`current` 指向崩溃前那个版本或新版本，不能指向不存在的目录。六个点各跑 3 次，结果要一致。
 
+**`kill -9` 测不出 fsync。** SIGKILL 只杀进程，page cache 里的数据仍然由内核持有、迟早会写回磁盘，所以一个完全不调用 `fsync` 的实现也能通过上面六项——它测的是"进程崩溃后的恢复逻辑"，不是"掉电后的持久性"。这两件事要分开验证：
+
+- **进程崩溃**：用上面的 `CN4_CRASH_AT` + `kill -9`，检查恢复逻辑和至少一次语义。这是 CN4 的主线，必须做。
+- **掉电/内核崩溃**：需要让 page cache 真的丢掉。最省事的做法是把工作区放在 loop 设备上，用 `echo 1 > /proc/sys/vm/drop_caches` 之前先 `umount` 不了（还挂着），所以实际可用的做法是跑在 VM 里对 VM 执行 `virsh destroy`、或用 `dm-flakey`/`dm-log-writes` 制造有序掉电。没有这些条件时，退一步用 `strace -e trace=fsync,fdatasync,rename` 证明"每个 rename 之前都有对应文件的 fsync、之后都有父目录的 fsync"，把 strace 输出附在报告里，并注明"未做掉电测试"。
+
+清单里只要求第一项；第二项做不到就如实写没做，不要用 `kill -9` 的结果冒充掉电测试的结果。
+
 ## 验收清单
 
 - [ ] `init`、`begin`、`write`、`commit`、`rollback`、`status`、`verify`、`recover` 八个子命令都能用，退出码符合约定。
 - [ ] 单文件循环 1000 次，读者没有看到半个文件。
 - [ ] 多文件提交 200 次，持有目录 fd 的读者没有看到混合版本。
 - [ ] 六个崩溃点各 3 次，`recover` 后 `verify` 全部通过。
+- [ ] 用 `strace -e trace=fsync,fdatasync,rename` 证明每个 `rename` 前有文件 fsync、后有父目录 fsync；做了掉电测试的附结果，没做就写明。
 - [ ] 两个写者冲突时返回 `E_STALE_BASE`，不静默覆盖。
 - [ ] 退出时 `merged` 已卸载，没有残留的 overlay 挂载和临时文件。
 - [ ] 能不看代码讲清 lower、upper、work、merged 各自的作用，以及为什么换 mount 做不到原子。

@@ -4,11 +4,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 source "$here/common.sh"
 
 require_repo
+require_implemented mr "Lab 1"
 
 if quick; then
-  run_check "make mr (Wc)" make -C "$SRC" RUN="-run Wc" mr
+  run_make_tests mr RUN="-run Wc"
 else
-  run_check "make mr" make -C "$SRC" mr
+  run_make_tests mr
 fi
 
 finish

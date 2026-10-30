@@ -6,7 +6,7 @@
 >
 > [返回作业](labs.html) · [上一个：AOS5](aos5.html)
 >
-> **难度** ★★★★★ · **先修** AOS1–AOS5 中至少三个 · **时间** 20–30 小时 · **最小通过** 8 个操作 + 2 类混沌；**完整通过** 10 个操作 + 报告 + demo
+> **难度** ★★★★★ · **先修** AOS1–AOS5 中至少三个 · **时间** 20–30 小时 · **最小通过** 8 个顶层操作 + 2 类混沌；**完整通过** 全部 11 个顶层操作 + 报告 + demo
 
 ## 你将完成什么
 
@@ -49,7 +49,7 @@ cd ~/labs/aos-capstone
 
 ## 操作表：先定 10 个，再删
 
-先按 10 个做，做完可以删到 8 个；删的时候要说明删掉了哪个性质。每个操作都必须有类型、前置条件、幂等键、错误分类和证据。
+先按 11 个做，做完可以删到 8 个；删的时候要说明删掉了哪个性质。每个操作都必须有类型、前置条件、幂等键、错误分类和证据。
 
 | # | 操作 | 原子性来源 | 关键失败 | 证据 |
 |---|---|---|---|---|
@@ -62,9 +62,10 @@ cd ~/labs/aos-capstone
 | 7 | `snapshot.create` | freeze + `fsync` + clone/reflink | 不一致、冻结超时 | `frozen=1`、snapshot id |
 | 8 | `snapshot.restore` | 版本目录 + symlink `rename` | 读者看到半版本 | 新 hash、旧版本保留 |
 | 9 | `lease.acquire` | lease 服务 + 持久 epoch | 双主、epoch 回退 | epoch、`fenced` 记录 |
-| 10 | `audit.query` | append-only + hash chain | 链断、尾部截断 | `verified_until`、首个坏 `seq` |
+| 10 | `budget.reserve` | 预留表 + 父配额求和 | 超额、重试绕过 | 预留 id、剩余额度 |
+| 11 | `audit.query` | append-only + hash chain | 链断、尾部截断 | `verified_until`、首个坏 `seq` |
 
-`lease.renew` 作为 `lease.acquire` 的 heartbeat 子路径，不单列；拆出去就变成第 11 个操作，超出上限。
+表里有 11 个。第 8 讲要求把 token 预算做成一等资源，`budget.reserve` 就是它的落点；`budget.charge`（结算）不单列，作为 `budget.reserve` 的子路径：一次 reserve 返回预留 id，charge 用这个 id 结算；`quota.set` 改的是 `spawn` 时传的父配额，也不是独立操作。`lease.renew` 同理，作为 `lease.acquire` 的 heartbeat 子路径。所以表里是 11 个顶层操作，加 `budget.charge` 和 `lease.renew` 两条子路径共 13 个可调用入口；删到 8 个时，先砍 `snapshot.restore` 和 `status`，再砍 `rollback`，每次说明丢了哪条不变量。
 
 数据流只有一条主路径：
 
@@ -216,7 +217,7 @@ cat "$CGROUP/cgroup.procs"
 
 ## 提交前检查
 
-- [ ] 10 个操作都有类型、幂等键、错误分类和证据；删到 8 个时写清删掉的性质。
+- [ ] 顶层操作都有类型、幂等键、错误分类和证据（含 `budget.reserve`）；删到 8 个时写清删掉的性质。
 - [ ] 混沌矩阵 10 条全部有结果，失败也有解释。
 - [ ] 报告里的每条主张都能指到一条测试和一段原始输出。
 - [ ] 没有真实凭证、生产 API 或用户数据进入工作区和审计。

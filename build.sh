@@ -8,8 +8,12 @@ ver="$(cat template.html assets/style.css assets/app.js assets/anim.css assets/a
   assets/fonts/infra-mono-400.woff2 assets/fonts/infra-mono-600.woff2 \
   | openssl dgst -sha256 -r | cut -c1-10)"
 
-rm -rf dist/assets/fonts
+rm -rf dist
 mkdir -p dist/assets/fonts
+# A full rebuild, not an in-place update: a page whose source was deleted or
+# renamed must disappear from dist/, otherwise the stale HTML keeps being served
+# while verify_build.py (which only checks that every source has an output)
+# reports OK.
 sed "s|\(fonts/infra-mono-[46]00\.woff2\)|\1?v=${ver}|g" assets/style.css > dist/assets/style.css
 sed "s|__ASSET_VER__|${ver}|g" assets/app.js > dist/assets/app.js
 cp assets/fonts/*.woff2 assets/fonts/OFL.txt dist/assets/fonts/

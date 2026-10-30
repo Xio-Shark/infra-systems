@@ -6,7 +6,7 @@
 
 ## 课程说明
 
-云原生很容易学成一套 YAML 语法：`kubectl apply`、`Deployment`、`Service`、`Ingress`。但真正的事故很少出在 YAML 写错，而是出在**多容器**的边界上。比如 init container 没跑完，app 就起来了；sidecar 没退出，Pod 卡在 Terminating；两个容器写同一个 volume，读到一个写了一半的文件；一个容器 OOM，整个 Pod 被驱逐；Service 的 VIP 能通，但 sidecar 里的 DNS 不通。
+云原生很容易学成一套 YAML 语法：`kubectl apply`、`Deployment`、`Service`、`Ingress`。但真正的事故很少出在 YAML 写错，而是出在**多容器**的边界上。比如 init container 没跑完，app 就起来了；sidecar 没退出，Pod 卡在 Terminating；两个容器写同一个 volume，读到一个写了一半的文件；一个容器 OOM 让整个 Pod 进入重启/失败状态；Service 的 VIP 能通，但 sidecar 里的 DNS 不通。
 
 这些问题的共同点是：**多个进程共享一部分资源，但各自的生命周期、权限、资源配额和观测视角不同**。Kubernetes 用 Pod 把“必须一起调度、共享网络和卷”的容器绑在一起，但没有替你想清楚生命周期、信号、文件原子性和故障隔离。这门课逐个讨论这些边界。
 
@@ -58,11 +58,11 @@ CN1 是本课程原创的实验：MIT 6.5840 只有五个实验（MapReduce、KV
 | 13 | Observability and performance | p99 从哪里来？ | [CN5](cn5.html) |
 | 14 | Capstone | 坏了能不能解释？ | [CN5](cn5.html) |
 
-## 实验
+## 实验一览
 
 | # | 实验 | 交付物 | 环境 |
 |---|---|---|---|
-| CN1 | Build a container from scratch | 隔离 shell + cgroup 内存限制；可选：手写 OCI layout | Linux/WSL2 |
+| CN1 | Build a container from scratch | 隔离 shell + cgroup 内存限制 | Linux/WSL2 |
 | CN2 | Mini Pod lifecycle | pause/init/app/sidecar + 信号 | Linux/WSL2 |
 | CN3 | CNI and Service | veth/bridge/NAT/DNAT；可选：DNS、超时与重试 | Linux/WSL2；网络受限时用 VM |
 | CN4 | Workspace transaction | overlayfs commit/rollback + 崩溃测试 | Linux/WSL2 |
@@ -191,13 +191,13 @@ pause 容器 ── 持有 netns <── setns ── app / sidecar
 
 ### 坏掉的时候看到什么
 
-pause 被杀，netns 的引用计数归零，Pod 网络立刻消失；业务容器可能还活着，但没有任何网卡。shim 挂了，容器会变成孤儿，退出码和 stdio 都收不回来，`kubectl logs` 只能看到空。运行时和 shim 版本不匹配时，`crictl exec` 可能报找不到容器，而 `ps` 里进程明明还在。如果守护进程的退出策略把整个 cgroup 一起杀掉，shim 也会跟着死，这时“重启 containerd 不影响业务”的假设就不成立。
+pause 被杀，netns 的**入口**就没了：业务容器已经 `setns` 进去，它们自己持有这个 netns，所以网络不会立刻消失，业务可能继续跑；但 pause 消失后 `/proc/<pause>/ns/net` 不可达，新容器无法再加入，kubelet 会把 sandbox 判成失败并重建。这一点在 [CN2](cn2.html) 里有更完整的讨论：netns 的行为由引用计数决定，不是由"谁创建它"决定。shim 挂了，容器会变成孤儿，退出码和 stdio 都收不回来，`kubectl logs` 只能看到空。运行时和 shim 版本不匹配时，`crictl exec` 可能报找不到容器，而 `ps` 里进程明明还在。如果守护进程的退出策略把整个 cgroup 一起杀掉，shim 也会跟着死，这时"重启 containerd 不影响业务"的假设就不成立。
 
-**多容器视角**：Pod 的沙箱不是抽象名词，它就是一个真实存在的 pause 容器。`crictl ps` 里命令是 `/pause` 的那个就是它。pause 死了，Pod 里所有容器一起失去网络；业务容器自己的健康检查却可能仍然通过，这是排查时最容易看错的地方。
+**多容器视角**：Pod 的沙箱不是抽象名词，它就是一个真实存在的 pause 容器。`crictl ps` 里命令是 `/pause` 的那个就是它。pause 负责持有 netns 的入口和 sandbox 的身份；它没了，网络本身可能还在（因为业务容器仍持有引用），但 Pod 已经不能加入新容器，健康检查却可能仍然通过，这是排查时最容易看错的地方。
 
 ### 和实验的关系
 
-[CN1](cn1.html) 的可选部分让你手写 OCI layout，用 `skopeo inspect` 或 `umoci ls` 验证；[CN2](cn2.html) 的第一步就是自己起一个 pause，让两个子进程 `setns` 进去，把“谁持有 netns”演一遍。做完这两步，CRI 的接口名就不需要背了。
+[CN2](cn2.html) 的第一步就是自己起一个 pause，让两个子进程 `setns` 进去，把"谁持有 netns"演一遍。做完这一步，CRI 的接口名就不需要背了。
 
 ### 检查一下自己
 
@@ -209,7 +209,7 @@ pause 被杀，netns 的引用计数归零，Pod 网络立刻消失；业务容�
 
 1. shim 是容器进程的父进程，持有 stdio 和退出状态；containerd 重启后通过 shim 的 socket 重新接上。
 2. runc 只按 runtime spec 建一次进程，建完就退出；长期监督、日志和回收由 shim 负责，这样运行时可以替换。
-3. netns 随 pause 消失，业务容器失去网络；kubelet 会重建 sandbox，业务容器通常要重启才能重新加入。
+3. netns 不会随 pause 一起消失：已经 `setns` 进去的业务容器自己持有引用，网络仍在。丢的是 pause 这个入口——新容器无法再加入，kubelet 把 sandbox 判为失败并重建，业务容器通常要重启才能加入新的 sandbox。
 
 **依据**：OCI Runtime Spec；Kubernetes CRI 文档；containerd 架构文档。
 
@@ -259,7 +259,7 @@ tag: prod ──> manifest ──> config（digest）
 
 ### 和实验的关系
 
-[CN1](cn1.html) 的可选任务是手工做一个 OCI layout，包含 `oci-layout`、`index.json` 和 `blobs/sha256/...`，再用 `skopeo inspect` 或 `umoci ls` 验证。做完你会看到 tag 和 digest 在文件系统里分别长什么样，也会明白为什么“重新打包一次”就会换 digest。
+[CN1](cn1.html) 把镜像层当作输入的 rootfs，不要求你自己构造镜像。想看 tag 和 digest 在文件系统里分别长什么样，可以对照 `skopeo inspect` 的输出读一遍 OCI 布局；这是延伸阅读，不是 CN1 的交付物。
 
 ### 检查一下自己
 
@@ -374,7 +374,9 @@ kubectl delete
 
 ### 量一次
 
-在开发机上跑 `docker run --rm --name demo alpine sh -c 'sleep 300; echo done'`，另开一个终端 `time docker stop demo`。默认等 10 秒才返回，因为 PID 1 是 shell，`SIGTERM` 没被转发。换成 `docker run --rm --name demo alpine sleep 300`，`docker stop` 立刻返回，因为 `sleep` 是 PID 1，收到 `SIGTERM` 就退出。Kubernetes 里把 `terminationGracePeriodSeconds` 设成 5，再用 `kubectl delete pod` 观察，能看清 grace 和 `preStop` 谁先到期。
+在开发机上跑 `docker run --rm --name demo alpine sh -c 'sleep 300; echo done'`，另开一个终端 `time docker stop demo`。默认等 10 秒才返回：PID 1 是 shell，`SIGTERM` 在 PID namespace 里被内核丢掉（PID 1 没装 handler 时非 `SIGKILL`/`SIGSTOP` 的信号直接忽略），shell 根本没机会转发。换成 `docker run --rm --name demo alpine sleep 300`，`docker stop` **仍然**要等满 10 秒——`sleep` 是 PID 1，同样没装 `SIGTERM` handler，同样被忽略。两次的差别不在"谁转发"，而在于有没有进程真的响应 `SIGTERM`。
+
+要看到"立刻返回"，得让 PID 1 自己处理信号，例如 `docker run --rm --name demo alpine sh -c 'trap "exit 0" TERM; sleep 300 & wait'`，或直接把这个进程换成 `tini`。Kubernetes 里把 `terminationGracePeriodSeconds` 设成 5，再用 `kubectl delete pod` 观察，能看清 grace 和 `preStop` 谁先到期。
 
 ### 坏掉的时候看到什么
 
@@ -388,13 +390,12 @@ kubectl delete
 
 ### 检查一下自己
 
-1. 为什么 `docker stop` 有时要等 10 秒？PID 1 没装 handler 和 shell 不转发各起什么作用？
-2. native sidecar 的终止顺序是什么？为什么这个顺序对日志重要？
+1. 为什么 `docker stop` 有时要等 10 秒？PID 1 没装 handler 和 shell 不转发各起什么作用？2. native sidecar 的终止顺序是什么？为什么这个顺序对日志重要？
 3. `SIGKILL` 能解决 Terminating 吗？它留下了什么？
 
 ### 答案要点
 
-1. `SIGTERM` 发给 PID 1，没 handler 就被忽略；shell 作为 PID 1 时也不转发，只能等超时后 `SIGKILL`。
+1. `SIGTERM` 发给 PID 1，没 handler 就被内核忽略，只能等宽限期到期后 `SIGKILL`。`sleep` 作 PID 1 也照样被忽略，所以"换成 `sleep` 就立刻返回"是错的。要让 `docker stop` 快速返回，PID 1 必须装 `SIGTERM` handler（`tini`、`dumb-init`，或自己 `trap` 后退出）。
 2. 在所有普通容器退出之后终止；日志 sidecar 因此能读到 app 的最后输出并 flush。
 3. 能让容器消失，但绕过清理逻辑，可能留下没卸载的卷、没 flush 的日志和仍在节点上的进程。
 
@@ -518,7 +519,7 @@ Service 只保证“能到达”，不保证“可靠地到达”。一个请求
 
 ### 和实验的关系
 
-[CN3](cn3.html) 的第 3 步用 iptables DNAT 做一个 Service VIP，把流量轮询到两个后端；第 6 步用 `tc netem` 注入延迟和丢包，测一次超时、重试和 p99。重点不是把数字调好看，而是能说出“多出来的请求是谁发的”。
+[CN3](cn3.html) 第 4 阶段用 iptables DNAT 做一个 Service VIP，把流量轮询到两个后端；第 5 阶段讲 hairpin 与 SNAT，可选的 netem 用来注入延迟和丢包，测一次超时、重试和 p99。重点不是把数字调好看，而是能说出"多出来的请求是谁发的"。
 
 ### 检查一下自己
 
@@ -750,7 +751,7 @@ app ──> 代理 ──mTLS──> 对端代理 ──> 对端 app
 
 ### 和实验的关系
 
-[CN3](cn3.html) 用两个 netns 加一个用户态代理就能模拟这条链路：多一次跳转、端口冲突、代理先死后死。把这一步做一遍，再看 [CN5](cn5.html) 里“sidecar 挂了会怎样”的验收问题，就不会只回答“重启它”。
+这一讲没有配套实验，是可以自己加的一步延伸：[CN3](cn3.html) 建好两个 netns 之后，在其中一个里跑一个最小 TCP 代理（`socat` 或几十行 Go），让 app 的出站必须经过它，就能观察到多一次跳转、端口冲突、代理先死后死。做完再回头看 [CN5](cn5.html) 里"sidecar 挂了会怎样"的验收问题，就不会只回答"重启它"。
 
 ### 检查一下自己
 
@@ -808,7 +809,7 @@ t=40   A 恢复，仍以为自己是 leader
 
 ### 和实验的关系
 
-[CN5](cn5.html) 要求至少做三种混沌测试，其中“杀 leader”和“网络分区”直接对应这一讲。验收时会问“两个 Pod 抢同一个卷会怎样”，答案要落到租约、fencing 和存储层的检查，而不是“StatefulSet 会保证”。
+[CN5](cn5.html) 的混沌矩阵有五类：进程崩溃、网络分区、磁盘满、OOM、时钟跳变。其中"进程崩溃"和"网络分区"是这一讲能用到的两类——但它们只验证"坏了会怎样"，不验证 fencing 本身；CN5 里没有 leader 或 fencing 的验收项。想做这一讲的实验，得自己在平台里加三个进程模拟副本、把 fence token 落到存储层检查；上面那个 `kill -STOP` 场景就是最小版本。验收时会问"两个 Pod 抢同一个卷会怎样"，答案要落到租约、fencing 和存储层的检查，而不是"StatefulSet 会保证"。
 
 ### 检查一下自己
 
@@ -921,7 +922,7 @@ spec ──> 期望状态
 
 ### 一次验收
 
-用 `mini-pod run spec.yaml` 起一个 Pod，`mini-pod ps` 应该列出 pause、init、app、sidecar 四个进程。`kill -9` app 的 PID，两秒内 `ps` 里的 app 应该变成重启中，重启计数加一；sidecar 不受影响。给 veth 加 `tc qdisc add dev veth1 root netem loss 100%` 持续 30 秒，app 请求失败但进程不退出。在 commit 过程中 `kill -9` 平台，重启后工作区要么是旧版本，要么是新版本，不能混合。
+用 `./mp apply -f pods/agent.yaml` 起一个 Pod，`./mp get pods` 的 `READY` 列应该是 `2/2`（app 和 sidecar）。`kill -9` app 的 PID，五秒内 `RESTARTS` 加 1、Pod 仍是 `Running`；sidecar 不受影响。给 veth 加 `tc qdisc add dev veth1 root netem loss 100%` 持续 30 秒，app 请求失败但进程不退出。在 commit 过程中 `kill -9` 平台，重启后工作区要么是旧版本，要么是新版本，不能混合。命令和验收项的完整清单见 [CN5](cn5.html)。
 
 ### 边界和常见失败
 
@@ -945,11 +946,11 @@ spec ──> 期望状态
 
 **依据**：Kubernetes 控制器与 Pod Lifecycle 文档；CN1–CN5 任务书；Google SRE 手册的 postmortem 模板。
 
-## 实验
+## 实验任务书
 
 | # | 实验 | 交付物 | 环境 |
 |---|---|---|---|
-| CN1 | Build a container from scratch | 隔离 shell + cgroup 内存限制；可选：手写 OCI layout | Linux/WSL2 |
+| CN1 | Build a container from scratch | 隔离 shell + cgroup 内存限制 | Linux/WSL2 |
 | CN2 | Mini Pod lifecycle | pause/init/app/sidecar + 信号 | Linux/WSL2 |
 | CN3 | CNI and Service | veth/bridge/NAT/DNAT；可选：DNS、超时与重试 | Linux/WSL2；网络受限时用 VM |
 | CN4 | Workspace transaction | overlayfs commit/rollback + 崩溃测试 | Linux/WSL2 |

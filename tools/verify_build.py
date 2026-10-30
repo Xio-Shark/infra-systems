@@ -48,8 +48,11 @@ def check_pages_built() -> list[Path]:
 def check_links(pages: list[Path]) -> None:
     for page in pages:
         html = page.read_text(encoding="utf-8")
-        for href in re.findall(r'href="([^"]+)"', html):
-            if href.startswith(("http://", "https://", "mailto:", "data:")):
+        # href 和 src 都要查：脚本/样式/图片走 src，删掉 app.js 或 anim.js 时
+        # 只扫 href 是发现不了的，页面照样能生成，只是交互全没了。
+        refs = re.findall(r'(?:href|src)="([^"]+)"', html)
+        for href in refs:
+            if href.startswith(("http://", "https://", "mailto:", "data:", "javascript:")):
                 continue
             path, _, anchor = href.partition("#")
             path = path.split("?", 1)[0]  # 资源带 ?v=<hash>，查文件时要剥掉
@@ -59,12 +62,24 @@ def check_links(pages: list[Path]) -> None:
                 continue
             target = DIST / path
             if not target.is_file():
-                fail(f"{page.name}: 链接 {href} 指向的文件不存在")
+                fail(f"{page.name}: 引用 {href} 指向的文件不存在")
                 continue
             if anchor:
                 other = target.read_text(encoding="utf-8")
                 if f'id="{anchor}"' not in other:
-                    fail(f"{page.name}: 链接 {href} 的锚点在目标页不存在")
+                    fail(f"{page.name}: 引用 {href} 的锚点在目标页不存在")
+
+
+def check_no_stale_pages(pages: list[Path]) -> None:
+    """dist/ 里不能有源文件已经不存在的页面。
+
+    build.sh 现在会先 rm -rf dist，所以这一条只在有人手工往 dist/ 里放东西、
+    或者改了 build 流程时才会抓到；它是回归保护，不是重复检查。
+    """
+    expected = {p.name for p in pages}
+    for html in DIST.glob("*.html"):
+        if html.name not in expected:
+            fail(f"dist/{html.name} 没有对应的 content/*.md（过期页面会被部署上线）")
 
 
 def check_asset_version() -> None:
@@ -112,6 +127,7 @@ def check_font_coverage() -> None:
 def main() -> int:
     pages = check_pages_built()
     check_links(pages)
+    check_no_stale_pages(pages)
     check_asset_version()
     check_font_coverage()
     for e in errors:

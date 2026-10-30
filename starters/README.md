@@ -4,9 +4,21 @@
 
 | 实验 | 骨架 | 能直接跑吗 |
 |---|---|---|
-| CN1 | `cn1/` | 能编译，用法和退出码正确；namespace、切根、cgroup 是 TODO |
+| CN1 | `cn1/` | 能编译，用法和退出码正确；namespace、切根、cgroup 共 7 处 `TODO(2)`–`TODO(8)` 待实现 |
+| 其余 | 无 | 按任务书从空目录自己搭。这是有意的：这些实验的重点是设计取舍，给完整骨架会替你做掉判断 |
 
-其余实验没有骨架，按任务书从空目录自己搭。这是有意的：这些实验的重点是设计取舍，给完整骨架会替你做掉判断。
+`aos/` 下不是骨架，是**验收脚本和测试 fixture**：
+
+| 目录 | 内容 |
+|---|---|
+| `aos/common.sh` | 脚本共用的断言与 JSON 解析 |
+| `aos/aos1/` | `tests/run.sh`（abi/idem/spawn/ssh-denied/oom/terminate/lifecycle）、`testdata/fake-tool/` |
+| `aos/aos2/` | `read-loop.sh`、`crash-matrix.sh`、`rollback.sh`、`conflict.sh`、`effects.sh`、`testdata/fake-api/` |
+| `aos/aos3/` | `cap.sh`、`escape.sh`、`revoke.sh`、`probe-landlock`、`testdata/escape/` |
+| `aos/aos4/` | `tests/snapshot.sh`、`scripts/torn-write.sh` |
+| `aos/aos5/` | `dual-owner.sh`、`tamper.sh`、`fence-stress.sh` |
+
+它们只通过任务书写明的 CLI 和文件系统观察，不 import 你的代码。用法、边界和"能证明什么、不能证明什么"见 [`aos/README.md`](aos/README.md)。
 
 ## 用 CN1 骨架
 

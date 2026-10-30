@@ -8,7 +8,9 @@
 >
 > [返回作业](labs.html) · [下一个：Lab 2](lab2.html)
 >
-> **难度** ★★ · **先修** 第 1、2 讲 + Go 基础 · **时间** 8–12 小时 · **最小通过** `TestWc` + `TestIndexer`；**完整通过** 7 个测试全绿
+> **难度** ★★ · **先修** 第 1、2 讲 + Go 基础 · **时间** 8–12 小时 · **最小通过** `TestWc` + `TestIndexer`（judge 显示 `PASS`）；**完整通过** 7 个测试全绿
+>
+> judge 的 `min_pass` 与这一行一致，写在 `judge/courses/infra01.json`；改这一行就要同步改那里。
 
 ## 你将完成什么
 
@@ -192,7 +194,7 @@ make RUN="-run ReduceParallel" mr
 1. 每个 running 任务记一个开始时间。coordinator 起一个后台 goroutine，每隔一段时间扫描：超过 10 秒还没报告的任务，重新标成 idle，再发给别人。
 2. `Report` 要幂等：如果任务已经 done，忽略晚到的报告；如果任务已经被重发，旧 worker 的报告不能覆盖新状态。
 3. map 输出用临时文件 + `rename`，保证 reduce 不会读到半个文件。
-4. worker 在 `call` 失败时退出：`call()` 里用的是 `log.Fatal`，coordinator 退出后 worker 会自己结束。看到 `connection refused` 是正常的，不要把它当成 bug。
+4. worker 在 `call` 失败时退出：骨架里的 `call()` 在**拨号**失败时 `log.Fatal`，在**调用**失败时只打印日志并返回 false。所以 coordinator 退出后，worker 的下一次 `Ask` 会 `dial` 失败并当场退出；`connection refused` 是正常现象，不要把它当成 bug。
 
 跑：
 

@@ -5,31 +5,94 @@
       "title": "MapReduce",
       "script": "lab1.sh",
       "weight": 20,
-      "timeout": 1200
+      "timeout": 1200,
+      "min_pass": ["mr:TestWc", "mr:TestIndexer"]
     },
     "lab2": {
       "title": "KV Server 与锁",
       "script": "lab2.sh",
       "weight": 20,
-      "timeout": 900
+      "timeout": 900,
+      "min_pass": [
+        "kvsrv1:TestReliablePut",
+        "kvsrv1:TestPutConcurrentReliable",
+        "kvsrv1:TestMemPutManyClientsReliable",
+        "lock1:TestReliableBasic",
+        "lock1:TestReliableNested",
+        "lock1:TestOneClientReliable",
+        "lock1:TestManyClientsReliable"
+      ]
     },
     "lab3": {
       "title": "Raft",
       "script": "lab3.sh",
       "weight": 20,
-      "timeout": 1800
+      "timeout": 1800,
+      "min_pass": [
+        "raft1:TestInitialElection3A",
+        "raft1:TestReElection3A",
+        "raft1:TestManyElections3A",
+        "raft1:TestBasicAgree3B",
+        "raft1:TestRPCBytes3B",
+        "raft1:TestFollowerFailure3B",
+        "raft1:TestLeaderFailure3B",
+        "raft1:TestFailAgree3B",
+        "raft1:TestFailNoAgree3B",
+        "raft1:TestConcurrentStarts3B",
+        "raft1:TestRejoin3B",
+        "raft1:TestBackup3B",
+        "raft1:TestCount3B"
+      ]
     },
     "lab4": {
       "title": "Fault-tolerant KV",
       "script": "lab4.sh",
       "weight": 20,
-      "timeout": 1200
+      "timeout": 1200,
+      "min_pass": [
+        "rsm1:TestBasic4A",
+        "rsm1:TestConcurrent4A",
+        "rsm1:TestLeaderFailure4A",
+        "rsm1:TestLeaderPartition4A",
+        "rsm1:TestRestartReplay4A",
+        "rsm1:TestShutdown4A",
+        "rsm1:TestRestartSubmit4A",
+        "kvraft1:TestBasic4B",
+        "kvraft1:TestSpeed4B",
+        "kvraft1:TestConcurrent4B",
+        "kvraft1:TestUnreliable4B",
+        "kvraft1:TestOnePartition4B",
+        "kvraft1:TestManyPartitionsOneClient4B",
+        "kvraft1:TestManyPartitionsManyClients4B",
+        "kvraft1:TestPersistOneClient4B",
+        "kvraft1:TestPersistConcurrent4B",
+        "kvraft1:TestPersistConcurrentUnreliable4B",
+        "kvraft1:TestPersistPartition4B",
+        "kvraft1:TestPersistPartitionUnreliable4B",
+        "kvraft1:TestPersistPartitionUnreliableLinearizable4B"
+      ]
     },
     "lab5": {
       "title": "Sharded KV",
       "script": "lab5.sh",
       "weight": 20,
-      "timeout": 1200
+      "timeout": 1200,
+      "min_pass": [
+        "shardkv:TestInitQuery5A",
+        "shardkv:TestStaticOneShardGroup5A",
+        "shardkv:TestJoinBasic5A",
+        "shardkv:TestDeleteBasic5A",
+        "shardkv:TestJoinLeaveBasic5A",
+        "shardkv:TestManyJoinLeaveReliable5A",
+        "shardkv:TestManyJoinLeaveUnreliable5A",
+        "shardkv:TestShutdown5A",
+        "shardkv:TestProgressShutdown5A",
+        "shardkv:TestProgressJoin5A",
+        "shardkv:TestOneConcurrentClerkReliable5A",
+        "shardkv:TestManyConcurrentClerkReliable5A",
+        "shardkv:TestOneConcurrentClerkUnreliable5A",
+        "shardkv:TestManyConcurrentClerkUnreliable5A"
+      ]
     }
   }
 }

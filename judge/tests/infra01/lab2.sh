@@ -4,13 +4,14 @@ here="$(cd "$(dirname "$0")" && pwd)"
 source "$here/common.sh"
 
 require_repo
+require_implemented kvsrv1 "Lab 2"
 
 if quick; then
-  run_check "kvsrv1 reliable" make -C "$SRC" RUN="-run Reliable" kvsrv1
-  run_check "lock reliable" make -C "$SRC" RUN="-run Reliable" lock1
+  run_make_tests kvsrv1 RUN="-run Reliable"
+  run_make_tests lock1 RUN="-run Reliable"
 else
-  run_check "kvsrv1" make -C "$SRC" kvsrv1
-  run_check "lock1" make -C "$SRC" lock1
+  run_make_tests kvsrv1
+  run_make_tests lock1
 fi
 
 finish

@@ -108,7 +108,11 @@ def check_lecture_shape() -> None:
 
 
 def check_hours() -> None:
-    """工时表是唯一来源；各页引用的合计必须与它一致。"""
+    """工时表是唯一来源；各页引用的合计和周数必须由它算出来。
+
+    以前的版本只检查几个硬编码字符串（"20–38 周"）还在不在——改坏工时表后
+    照样通过。现在改成：从表里读出合计，再独立算出周数区间，两边必须相等。
+    """
     labs = (CONTENT / "labs.md").read_text(encoding="utf-8")
     table = re.search(r"\| 实验 \| 预计 \| 实验 \| 预计 \|(.*?)\n\n", labs, flags=re.S)
     if not table:
@@ -117,25 +121,121 @@ def check_hours() -> None:
     cells = re.findall(r"(\d+)\s*–\s*(\d+)\s*h", table.group(1))
     if len(cells) != 16:
         fail(f"labs.md: 工时表应有 16 个实验，找到 {len(cells)} 个")
-    lo = sum(int(a) for a, _ in cells)
-    hi = sum(int(b) for _, b in cells)
-    if not (lo <= 181 <= hi and lo <= 278 <= hi):
-        fail(f"labs.md: 工时表合计 {lo}–{hi}，与正文声明的 181–278 不符")
-    if "181–278" not in labs:
-        fail("labs.md: 正文没有写合计 181–278 小时")
+        return
+    lab_lo = sum(int(a) for a, _ in cells)
+    lab_hi = sum(int(b) for _, b in cells)
 
+    # index.md 的三行：实验小时、含阅读的小时，以及两种节奏下各自的周数区间。
+    # "加阅读"列是累计值（实验 + 阅读），不是额外加项。
     index = (CONTENT / "index.md").read_text(encoding="utf-8")
-    if "197–301" not in index:
-        warn("index.md: 没有出现 197–301 小时这个合计，确认是否漏改")
-    # 周数必须与工时相除一致（8–10 小时/周）
-    if "20–38 周" not in index:
-        fail("index.md: 8–10 小时/周对应的周数不是 20–38（197/10 到 301/8）")
+    row_re = re.compile(
+        r"\| (INFRA 0[123]) \| (\d+)–(\d+) 小时 \| (\d+)–(\d+) 小时 "
+        r"\| 第 (\d+)–(\d+) 周 \| 第 (\d+)–(\d+) 周 \|"
+    )
+    import math
 
-    path_md = (CONTENT / "path.md").read_text(encoding="utf-8")
-    if "20–38 周" not in path_md:
-        fail("path.md: 稳扎稳打的周数不是 20–38")
-    if "10–21 周" not in path_md:
-        fail("path.md: 冲刺的周数不是 10–21")
+    def span(lo: int, hi: int, rate_lo: int, rate_hi: int) -> tuple[int, int]:
+        """工时 lo–hi 在 rate_lo–rate_hi 小时/周下的周数区间（最快, 最慢）。"""
+        return math.ceil(lo / rate_hi), math.ceil(hi / rate_lo)
+
+    rows = row_re.findall(index)
+    if len(rows) != 3:
+        fail(f"index.md: 期望 3 行课程工时表，找到 {len(rows)} 行")
+        return
+
+    exp_lo = sum(int(r[1]) for r in rows)
+    exp_hi = sum(int(r[2]) for r in rows)
+    if (exp_lo, exp_hi) != (lab_lo, lab_hi):
+        fail(
+            f"index.md: 实验列合计 {exp_lo}–{exp_hi} 与 labs.md 工时表的 "
+            f"{lab_lo}–{lab_hi} 不符"
+        )
+
+    total_lo = sum(int(r[3]) for r in rows)
+    total_hi = sum(int(r[4]) for r in rows)
+
+    # 列里给的是"按顺序排到第几周"，所以每门课占的宽度是它自己在最慢节奏下的
+    # 周数 ceil(hi / rate_lo)；三行必须首尾相接，末行终点即全套上限。
+    cursor_slow = cursor_fast = 1
+    for name, _e_lo, _e_hi, t_lo, t_hi, s1, s2, f1, f2 in rows:
+        t_lo, t_hi = int(t_lo), int(t_hi)
+        width_slow = math.ceil(t_hi / 8)
+        width_fast = math.ceil(t_hi / 15)
+        want_slow = (cursor_slow, cursor_slow + width_slow - 1)
+        want_fast = (cursor_fast, cursor_fast + width_fast - 1)
+        if (int(s1), int(s2)) != want_slow:
+            fail(
+                f"index.md: {name} 的 8–10 小时/周应写 第 {want_slow[0]}–{want_slow[1]} 周"
+                f"（{t_hi} 小时 ÷ 8 向上取整 = {width_slow} 周，从上一个课程结束处开始），"
+                f"实际写 {s1}–{s2}"
+            )
+        if (int(f1), int(f2)) != want_fast:
+            fail(
+                f"index.md: {name} 的 15–20 小时/周应写 第 {want_fast[0]}–{want_fast[1]} 周"
+                f"（{t_hi} 小时 ÷ 15 向上取整 = {width_fast} 周），实际写 {f1}–{f2}"
+            )
+        cursor_slow = want_slow[1] + 1
+        cursor_fast = want_fast[1] + 1
+
+    slow_s = "–".join(str(x) for x in span(total_lo, total_hi, 8, 10))
+    fast_s = "–".join(str(x) for x in span(total_lo, total_hi, 15, 20))
+    total_s = f"{total_lo}–{total_hi}"
+
+    # 全套区间必须与逐课累加的上界吻合，否则"20–38 周"就是拍脑袋的数字。
+    end_slow, end_fast = cursor_slow - 1, cursor_fast - 1
+    if end_slow != int(slow_s.split("–")[1]):
+        fail(
+            f"index.md: 逐课累加到第 {end_slow} 周，但整套声明的上限是 "
+            f"{slow_s.split('–')[1]} 周"
+        )
+    if end_fast != int(fast_s.split("–")[1]):
+        fail(
+            f"index.md: 逐课累加（冲刺）到第 {end_fast} 周，但整套声明的上限是 "
+            f"{fast_s.split('–')[1]} 周"
+        )
+
+    for name, text in (
+        ("index.md", index),
+        ("path.md", (CONTENT / "path.md").read_text(encoding="utf-8")),
+        ("labs.md", labs),
+    ):
+        if total_s not in text:
+            fail(f"{name}: 没有出现合计 {total_s} 小时（由工时表算出）")
+        if f"{slow_s} 周" not in text:
+            fail(f"{name}: 8–10 小时/周应写 {slow_s} 周（{total_lo}/10 到 {total_hi}/8）")
+        if f"{fast_s} 周" not in text:
+            fail(f"{name}: 15–20 小时/周应写 {fast_s} 周（{total_lo}/20 到 {total_hi}/15）")
+
+
+def check_acceptance_scripts() -> None:
+    """实验页引用的验收脚本必须真的在仓库里。
+
+    INFRA 02/03 没有 judge，读者的验收完全依赖任务书里写的那几条命令。一旦
+    页面引用一个仓库里不存在的 tests/*.sh，那门课就没有可判定的完成标准了。
+    脚本按实验落在 starters/aos/<lab>/ 下，页面里写成 ./tests/xxx.sh。
+    """
+    # <page>: [<lab dir>, …] — a page may ship scripts under more than one dir.
+    labs = {
+        "aos1": "aos1",
+        "aos2": "aos2",
+        "aos3": "aos3",
+        "aos4": "aos4",
+        "aos5": "aos5",
+    }
+    script_re = re.compile(r"\./(tests|scripts)/([A-Za-z0-9_.-]+)")
+
+    for page, lab in labs.items():
+        path = CONTENT / f"{page}.md"
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for subdir, name in set(script_re.findall(text)):
+            shipped = ROOT / "starters" / "aos" / lab / subdir / name
+            if not shipped.is_file():
+                fail(
+                    f"{page}.md: 引用了 ./{subdir}/{name}，"
+                    f"但 starters/aos/{lab}/{subdir}/{name} 不存在"
+                )
 
 
 def check_judge_scripts() -> None:
@@ -203,6 +303,7 @@ def main() -> int:
     check_lecture_shape()
     check_hours()
     check_judge_scripts()
+    check_acceptance_scripts()
     if args.links:
         check_external_links()
 

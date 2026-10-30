@@ -59,6 +59,18 @@ cp --reflink=always base.img clone.img && echo reflink-ok || echo reflink-unsupp
 
 时间预算 8–14 小时。建议分配：文件快照 3 小时，原子恢复 2 小时，三分支 1 小时，一致快照 3 小时，边界报告 2 小时。
 
+## CLI 契约 {#cli}
+
+`starters/aos/aos4/tests/snapshot.sh` 和 `scripts/torn-write.sh` 只通过下面这些命令和你说话。stdout 是单行 JSON，成功退出 0。
+
+| 命令 | 语义 |
+|---|---|
+| `aos4 snapshot create --workspace DIR --id ID [--parent ID]` | 返回 `{"result":{"tree_sha256":…}}`；`tree_sha256` 必须能由工作区独立重算 |
+| `aos4 snapshot list --workspace DIR` | 返回快照列表，每项含 `id`、`parent`、`tree_sha256` |
+| `aos4 snapshot restore --workspace DIR --id ID` | 恢复为原子操作，读者只会看到旧版或新版 |
+| `aos4 exec --workspace DIR --branch ID -- CMD…` | 在某个分支的工作区里执行命令 |
+| `aos4 freeze --workspace DIR --on\|--off` | 写 `cgroup.freeze` 并轮询到 `frozen 1`；`torn-write.sh --mode freeze` 用它 |
+
 ## 快照里有什么，没有什么
 
 先把状态清单写出来，再写代码。下面这张表是本实验的核心交付物之一。
@@ -198,6 +210,8 @@ cd ~/labs/aos4
 ./scripts/torn-write.sh --mode freeze --seconds 10
 ```
 
+脚本在仓库的 `starters/aos/aos4/scripts/torn-write.sh`，复制到 `~/labs/aos4/scripts/`。`freeze` 模式会调用 `./aos4 freeze --workspace DIR --on|--off`；没有这个子命令时它会退化成普通复制并如实说明，不会假装冻结过。
+
 预期 `direct` 至少出现一次 hash 不在完整集合里，`freeze` 一次都不出现。如果 `direct` 也没抓到，增大文件或延长运行时间，不要因此删掉这个测试。
 
 ### 阶段 6（选做）：进程快照的边界
@@ -211,6 +225,7 @@ cd ~/labs/aos4
 - [ ] 三个命令各一份 JSON 回复，字段完整。
 - [ ] `restore` 后 `sha256sum` 与 manifest 一致，附 diff 为空。
 - [ ] 三个分支 hash 两两不同，附 `list`。
+- [ ] `starters/aos/aos4/tests/snapshot.sh` 全绿（create/list/restore/分支隔离四条）。
 - [ ] 一致快照日志里能看到 `frozen 1` 出现在 clone 之前，附 `cgroup.events` 前后两行。
 - [ ] `direct` 对照至少有一次 torn write，或说明为什么在你的环境复现不了。
 - [ ] 崩溃测试：在 snapshot 的 clone 后、manifest 写入前 `kill -9`，重启后 `list` 里没有半成品。

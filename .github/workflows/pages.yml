@@ -39,11 +39,43 @@ jobs:
           go-version: "1.22"
       - name: Check starters stay buildable
         run: |
-          cd starters/cn1
-          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
-          go vet ./...
-          go build -o /dev/null .
-          GOOS=linux go build -o /dev/null .
+          # cn1 是唯一带骨架的实验；aos 的是验收脚本和 fixture，同样不能腐烂。
+          for d in starters/cn1 starters/aos/aos1/testdata/fake-tool \
+                   starters/aos/aos2/testdata/fake-api starters/aos/aos3/testdata/escape; do
+            [ -f "$d/go.mod" ] || continue
+            echo "== $d"
+            ( cd "$d"
+              test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+              go vet ./...
+              go build -o /dev/null .
+              GOOS=linux go vet ./...
+              GOOS=linux go build -o /dev/null . )
+          done
+      - name: Check shell acceptance scripts
+        run: |
+          # 语法错、或者判分脚本自己不可执行，都会让读者按页面照做时直接失败。
+          fail=0
+          for f in $(git ls-files '*.sh' 'starters/aos/*/tests/*.sh') starters/aos/aos3/tests/probe-landlock; do
+            [ -f "$f" ] || continue
+            bash -n "$f" || { echo "syntax: $f"; fail=1; }
+          done
+          for f in judge/run.sh judge/tests/*/*.sh starters/aos/*/tests/*.sh \
+                   starters/aos/*/scripts/*.sh starters/aos/aos3/tests/probe-landlock; do
+            [ -f "$f" ] || continue
+            [ -x "$f" ] || { echo "not executable: $f"; fail=1; }
+          done
+          exit $fail
+      - name: Check judge wiring
+        run: |
+          # judge 应该能在没有实现的情况下立刻给出 SKIP，而不是挂到超时。
+          ./judge/run.sh --list >/dev/null
+          out=$(./judge/run.sh infra01 lab1 --json)
+          echo "$out" | python3 -c '
+          import json,sys
+          r=json.load(sys.stdin)[0]
+          assert r["status"] in ("SKIP","FAIL","ERROR"), r
+          print("judge without a lab checkout ->", r["status"])
+          '
       - uses: actions/upload-artifact@v4
         with:
           name: dist

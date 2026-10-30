@@ -10,6 +10,8 @@
 
 ## 你将完成什么
 
+> **和 CN4 的关系**：INFRA 02 的 [CN4](cn4.html) 也做工作区原子提交，但它是容器视角（overlayfs、copy-up、whiteout），本实验是 agent 运行时视角（journal 状态机、冲突检测、外部副作用账本）。提交点、恢复规则和验收项都不同；如果你已经做过 CN4，报告里要写清哪些是复用、哪些是重写，不要直接把 CN4 的实现贴过来。
+
 这个实验要让一组文件变更要么整体可见，要么完全不可见，并且在进程被杀、机器重启之后仍然说得清处于哪个版本。你会做一个 `aos2` CLI 和一个库：工作区（workspace）按代（generation）保存，每次提交产生一个不可变的新代，`current` 符号链接原子地指向它。读者只认符号链接解析出的那个目录，所以不会读到一半新一半旧。
 
 验收有四组。第一组是读者：循环读 100 个写着 `gen=N` 的文件，跑 2000 轮，输出必须是 `torn=0 mixed=0`。第二组是崩溃：在每个提交阶段 `kill -9`，重启后 `recover`，`status` 只能报旧版本或新版本，不能混合；`recover` 连跑两次结果相同。第三组是回滚：整棵树的 sha256 与目标版本一致。第四组是副作用：外部调用超时返回 `indeterminate`，账本查得到它是否生效；回滚报告要列出不可回滚项，不能只说 `complete`。
@@ -58,7 +60,7 @@ ext4 会显示成 `ext2/ext3`，这是魔数命名，不是文件系统类型错
 
 `internal/ws/publish.go` 负责建新代、`fsync` 整棵树、切换 `current`；`manifest.go` 定义 manifest 结构和读写。`internal/txn/state.go` 是状态机，`journal.go` 追加写记录，`recover.go` 在启动时重放。`internal/effects/ledger.go` 记录每个外部副作用的状态和补偿入口。CLI 只解析参数、发请求、打印 JSON，不直接改文件。
 
-`tests/` 是验收标准，不能改。读者循环和崩溃矩阵只通过 CLI 和文件系统观察，不 import 你的包。
+仓库 `starters/aos/aos2/tests/` 有现成的验收脚本（读者循环、崩溃矩阵、回滚、冲突、副作用），复制到 `~/labs/aos2/tests/`。它们只通过 CLI 和文件系统观察，不 import 你的包。`starters/aos/aos2/testdata/fake-api/` 是副作用测试用的本地 HTTP 服务，`go build -o testdata/fake-api ./testdata/fake-api`。
 
 ## 接口与数据流
 
@@ -79,7 +81,7 @@ ws/
 
 1. 写者拿 `flock(manifest.lock)`，读当前版本并与 `base` 比较。
 2. 写一条 `intent` 记录并 `fsync` journal，记下基线版本、变更列表和副作用列表。
-3. 用硬链接或复制把未变的文件放进 `gen/N`，把暂存的新文件写进去，逐个 `fsync`，写 `.manifest` 并 `fsync`，再 `fsync` 代目录。
+3. 用硬链接或复制把未变的文件放进 `gen/N`（硬链接要求旧代只读，否则原地写会同时改掉两代，见阶段 2），把暂存的新文件写进去，逐个 `fsync`，写 `.manifest` 并 `fsync`，再 `fsync` 代目录。
 4. 追加 `prepared` 并 `fsync`。
 5. `rename` 一个临时符号链接覆盖 `current`，再 `fsync` 工作区目录。
 6. 追加 `committed` 并 `fsync`，释放锁。
@@ -155,19 +157,41 @@ type Effect struct {
 
 超时不是失败，是 `indeterminate`。恢复时先按 `idem` 查账本和外部系统的 `lookup`，确认生效就补 `confirmed`，确认没生效才重试。补偿不是撤销：退款是另一笔交易，可能失败；邮件和 webhook 发出去就收不回。回滚报告分三栏写：已丢弃的文件变更、已补偿的副作用、不可回滚的副作用。
 
+## CLI 契约 {#cli}
+
+`tests/` 下的脚本只通过下面这些命令和你说话。参数名可以不同，但语义必须一致，否则脚本判不了。所有命令成功退出 0，失败非零；`status`、`commit`、`rollback`、`recover`、`effect` 的 stdout 是单行 JSON。
+
+| 命令 | 语义 |
+|---|---|
+| `aos2 init --ws DIR` | 在 `DIR` 建世代 0 的基线 |
+| `aos2 commit --ws DIR --base N [--put PATH=SRC]…` | 以版本 N 为基线提交；`--put` 可重复 |
+| `aos2 begin --ws DIR` | 开一个事务（不立即提交） |
+| `aos2 write --ws DIR [--put PATH=SRC]…` | 在已 `begin` 的事务里暂存文件 |
+| `aos2 rollback --ws DIR [--to N]` | 未提交时丢弃暂存；已提交时回到版本 N，产生新代 |
+| `aos2 status --ws DIR` | 打印 `{"version":N,"state":"…"}`，`state` ∈ committed/aborted |
+| `aos2 verify --ws DIR` | 按 manifest 校验当前代的每个文件 |
+| `aos2 recover --ws DIR` | 从 journal 恢复；幂等，可重复调用 |
+| `aos2 effect --ws DIR --kind K --url U --body JSON [--timeout D] [--compensate C]` | 记一次外部副作用并执行 |
+
+`AOS2_CRASH_AT` 的取值固定在提交步骤名上：`after_intent`、`after_stage`、`after_prepared`、`before_switch`、`after_switch`。到达该点时调 `kill(getpid(), SIGKILL)`，不走 `defer`。
+
+`effect` 的 `--kind` 至少认 `charge` 和 `send`；前者可补偿（`--compensate refund`），后者是 `irreversible`。超时时间用 `--timeout`（Go duration，例如 `1s`）。超时后账本状态必须是 `indeterminate`，且 `rollback` 的报告里要把它和 `irreversible` 分开列。
+
 ## 阶段拆解
 
 阶段 1 做单文件原子替换。在目标目录里写临时文件，`fsync` 文件，`rename` 成目标名，`fsync` 目录。跑 `./tests/read-loop.sh --files 1 --iters 2000`，预期 `torn=0`。如果出现半行，检查是不是用了 `O_TRUNC` 原地写。
 
-阶段 2 加代和 manifest。每次提交建一个新目录，未变文件硬链接过去，新文件写进去；`current` 用 `rename` 切换。读者循环读 100 个文件，每轮只解析一次 `current`。跑 `./tests/read-loop.sh --files 100 --iters 500`，预期 `mixed=0`，并且每轮的 `gen=` 全部相同。
+阶段 2 加代和 manifest。每次提交建一个新目录，未变的文件用硬链接带过去，新文件写进去；`current` 用 `rename` 切换。硬链接省空间，但有一个必须处理的后果：**旧代和新代共享同一个 inode**，任何一次原地写（`>` 重定向、`O_TRUNC`、`sed -i`）都会同时改掉两个代。所以要么让旧代只读（`chmod -R a-w gen/<n>` 或 `chattr +i`，并在提交后立刻做），要么在写入路径上一律"写新文件再 `rename`"，从不原地改。前者是防线，后者是纪律，两条都要，并在报告里说清你选的是哪条、怎么验证的。
 
-阶段 3 加 journal 和恢复。按上面的六步写记录，每次写入后 `fsync`。用 build tag `crashinject` 提供 `AOS2_CRASH_AT=after_intent|after_stage|after_prepared|before_switch|after_switch`，测试脚本在这些点发 `kill -9`。跑 `./tests/crash-matrix.sh`，每行输出 `case=before_switch state=old mixed=0` 这样的结果；再跑一次 `recover`，输出不变。
+读者循环读 100 个文件，每轮只解析一次 `current`。跑 `./tests/read-loop.sh --files 100 --iters 500`，预期 `torn=0 mixed=0`，并且每轮的 `gen=` 全部相同。再补一个针对硬链接的检查：提交两次后改一次旧代目录里的文件（直接 `echo >` 该路径），确认新代内容不变；变了说明旧代不是只读的，"历史不可改写"这条就不成立。
 
-阶段 4 加回滚。提交前的回滚就是丢弃暂存和未完成的代，返回基线版本。提交后的回滚产生一个新版本，树内容等于目标版本，manifest 里记 `rolled_back_from`；历史不改写，版本号继续递增。跑 `./tests/rollback.sh`，预期 `tree_match=true`，并且 `status` 显示新版本号。
+阶段 3 加 journal 和恢复。按上面的六步写记录，每次写入后 `fsync`。用 build tag `crashinject` 提供 `AOS2_CRASH_AT=after_intent|after_stage|after_prepared|before_switch|after_switch`，测试脚本在这些点发 `kill -9`。跑 `./tests/crash-matrix.sh --repeat 3`：五个崩溃点各 3 次，每次都要求 `recover` 退出 0、`verify` 通过、`status` 是 `committed` 或 `aborted`，且连续两次 `recover` 结果一致。
 
-阶段 5 加冲突检测。写者持 `flock` 串行化提交，切换前再比较一次当前版本与 `base`；不等就返回 `conflict`，带上 `current_version`。两个写者同时提交同一基线，只能有一个成功。跑 `./tests/conflict.sh`，预期 `ok=1 conflict=1 lost_update=0`。
+阶段 4 加回滚。提交前的回滚就是丢弃暂存和未完成的代，返回基线版本。提交后的回滚产生一个新版本，树内容等于目标版本，manifest 里记 `rolled_back_from`；历史不改写，版本号继续递增。跑 `./tests/rollback.sh`：提交前的回滚要求 `current` 不变、`.staging` 清空；提交后的回滚要求树的 sha256 与目标版本一致、并且是**新代**而不是切回旧目录。
 
-阶段 6 加副作用账本。`testdata/fake-api` 提供 `charge`、`refund`、`lookup`、`send` 四个端点；`charge` 在注入延迟时让客户端超时。跑 `./tests/effects.sh`，预期 `indeterminate=1 compensated=1 irreversible=1`，回滚报告里三栏都有内容。
+阶段 5 加冲突检测。写者持 `flock` 串行化提交，切换前再比较一次当前版本与 `base`；不等就返回 `conflict`，带上 `current_version`。两个写者同时提交同一基线，只能有一个成功。跑 `./tests/conflict.sh`：两个写者同基线，只有一个成功、失败方报 conflict/stale，最终文件内容等于赢家，没有静默覆盖。
+
+阶段 6 加副作用账本。`testdata/fake-api` 提供 `charge`、`refund`、`lookup`、`send` 四个端点；`charge` 在注入延迟时让客户端超时。跑 `./tests/effects.sh`：脚本自己起 `testdata/fake-api`，超时的那次 charge 要在服务端计数上体现、账本标 `indeterminate`、`/send` 出现在不可回滚栏、补偿真的调到了 `refund`。
 
 ## 验收清单
 
@@ -180,6 +204,7 @@ type Effect struct {
 - [ ] 超时的外部调用记为 `indeterminate`，恢复后能通过 `lookup` 定论。
 - [ ] 回滚报告列出不可回滚的副作用，不只写 `complete`。
 - [ ] 版本比较只含内容 hash、mode、size，不含 atime。
+- [ ] 旧代是只读的，或者写入路径从不原地改：改一次旧代文件后，新代内容不变。
 - [ ] 300 字复盘，按[评分标准](grading.html#reflection)的五问。
 
 ## 常见错误
@@ -197,7 +222,7 @@ type Effect struct {
 
 ## 调试手册
 
-先跑单个用例并留日志：`./tests/crash-matrix.sh --case before_switch 2>&1 | tee /tmp/aos2-crash.log`。看最后 40 行，确认崩溃点、恢复后的版本和 `mixed` 计数。
+先跑单个用例并留日志：`./tests/crash-matrix.sh --case before_switch 2>&1 | tee /tmp/aos2-crash.log`。看最后 40 行，确认崩溃点、恢复后的状态和 `current` 指向哪一代。
 
 文件操作看 `strace`：
 
@@ -223,6 +248,7 @@ strace -f -e trace=openat,rename,renameat2,fsync,flock,unlink,rmdir \
 - [ ] 冲突返回 `conflict` 和 `current_version`，没有丢失更新。
 - [ ] 副作用账本完整，不可回滚项在报告里单独列出。
 - [ ] 没有把 atime、目录 mtime 纳入版本比较。
+- [ ] 旧代只读或从不原地写；用改旧代文件的实验验证过。
 - [ ] 300 字复盘写完。
 
 ## 自测问题

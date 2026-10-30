@@ -93,10 +93,10 @@ stdin 是一份 JSON，最小配置如下：
  "bridge":"cni0","subnet":"10.22.0.0/16"}
 ```
 
-`ADD` 成功时 stdout 输出 `Result`，失败时输出 error JSON 并以非零退出。error JSON 至少要有 `cniVersion`、`code`、`msg`：
+`ADD` 成功时 stdout 输出 `Result`，失败时输出 error JSON 并以非零退出。error JSON 至少要有 `cniVersion`、`code`、`msg`。`code` 0–99 是 CNI 规范保留的，`100+` 留给插件自定义：`7` 表示配置无效，不能拿来表示"建 veth 失败"；这类运行时错误用插件自己的码（例如 `100`），或者用规范里的 `11`（Try again later，适合可重试的暂时性失败）。
 
 ```json
-{"cniVersion":"1.0.0","code":7,"msg":"failed to create veth","details":"veth exists"}
+{"cniVersion":"1.0.0","code":100,"msg":"failed to create veth","details":"veth exists"}
 ```
 
 一次 `ADD` 的数据流：
@@ -167,9 +167,14 @@ ip netns exec pod-a ping -c1 10.22.0.1
 ```bash
 sudo CNI_COMMAND=ADD CNI_CONTAINERID=pod-a CNI_NETNS=/var/run/netns/pod-a \
   CNI_IFNAME=eth0 ./minicni < testdata/net.json | jq .
-sudo CNI_COMMAND=DEL CNI_CONTAINERID=pod-a ./minicni
-sudo CNI_COMMAND=DEL CNI_CONTAINERID=pod-a ./minicni   # 第二次也应退出 0
+sudo CNI_COMMAND=DEL CNI_CONTAINERID=pod-a CNI_NETNS=/var/run/netns/pod-a \
+  CNI_IFNAME=eth0 ./minicni
+sudo CNI_COMMAND=DEL CNI_CONTAINERID=pod-a CNI_NETNS=/var/run/netns/pod-a \
+  CNI_IFNAME=eth0 ./minicni   # 第二次也应退出 0
+sudo CNI_COMMAND=DEL CNI_CONTAINERID=pod-a CNI_IFNAME=eth0 ./minicni   # netns 已消失，仍要退出 0
 ```
+
+最后一行是真实场景：pod 被删掉后 `CNI_NETNS` 可能已经不存在甚至为空，插件必须靠状态文件清理宿主侧资源。
 
 预期第一条输出 `"address":"10.22.0.2/16"`，第二条删掉 veth 和规则，第三条不报错。通过标志：`ip link` 里没有该容器对应的宿主端 veth（名字由容器 ID 生成）；`/var/lib/minicni/minicni/pod-a` 被删除；重复 `ADD` 同一容器 ID 返回同一份结果，不会建出第二对 veth。
 
@@ -216,11 +221,14 @@ ip link set svc0 up
 ```bash
 iptables -t nat -N MINICNI-SVC
 iptables -t nat -A PREROUTING -d 10.96.0.10 -p tcp --dport 80 -j MINICNI-SVC
-iptables -t nat -A MINICNI-SVC -m conntrack --ctstate NEW \
+# 第一条吃掉第 1、3、5… 个新连接
+iptables -t nat -A MINICNI-SVC -p tcp -m conntrack --ctstate NEW \
   -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 10.22.0.2:80
-iptables -t nat -A MINICNI-SVC -m conntrack --ctstate NEW \
-  -m statistic --mode nth --every 2 --packet 1 -j DNAT --to-destination 10.22.0.3:80
+# 第二条兜底：前面漏下的（第 2、4、6… 个）全给它
+iptables -t nat -A MINICNI-SVC -p tcp -j DNAT --to-destination 10.22.0.3:80
 ```
+
+三条细节不能省。第一，DNAT 到端口必须带 `-p tcp`，否则 iptables 直接报 `Need TCP, UDP, SCTP or DCCP with port specification`，规则根本进不了链。第二，`statistic` 的计数器是**每条规则实例各自一个**，不是链共享的；再叠加 DNAT 是终结动作、后面的规则只看到前面漏下的包，所以两条都写 `--every 2` 会得到 3:1:2 而不是交替。第二跳要么像上面这样兜底（等价于 `--every 1 --packet 0`），要么改成 `--mode random --probability 0.5` 做概率分流——但概率分流没法一刀切成 3:3，验收时要用区间判据。
 
 跑六次新连接：
 
@@ -230,7 +238,7 @@ for i in $(seq 1 6); do
 done
 ```
 
-预期输出交替出现 `A` 和 `B`，`conntrack -L -p tcp --dport 80` 能看到两条不同的 DNAT 目标。通过标志：至少各命中两次；同一个 TCP 连接内的多个请求只走一个后端。DNAT 只在连接的第一个包上做，后续包由 conntrack 直接映射。
+预期输出前三次是 `A`、后三次是 `B`（第 1/3/5 个走规则一，第 2/4/6 个落到兜底规则），`conntrack -L -p tcp --dport 80` 能看到两条不同的 DNAT 目标。通过标志：各命中三次；同一个 TCP 连接内的多个请求只走一个后端。DNAT 只在连接的第一个包上做，后续包由 conntrack 直接映射。`iptables -t nat -L MINICNI-SVC -v -n` 里的计数器能直接确认这个 3/3 分布——调规则时先看计数器，不要靠 curl 的结果猜。
 
 把一条 VIP 连接和第二次轮询走一遍：
 
@@ -262,7 +270,7 @@ iptables -t nat -A POSTROUTING -m mark --mark 0x4000 -j MASQUERADE
 | 插件 DEL 幂等 | 连续执行两次 `DEL` | 两次都退出 0 |
 | 外网可达 | `ip netns exec pod-a curl http://example.com` | HTTP 200 或 301 |
 | NAT 生效 | `conntrack -L -s 10.22.0.2` | 源地址被改成宿主地址 |
-| VIP 轮询 | 六次 `curl http://10.96.0.10/` | A/B 各至少两次 |
+| VIP 轮询 | 六次 `curl http://10.96.0.10/`；`iptables -t nat -L MINICNI-SVC -v -n` 看计数器 | 前三次 A、后三次 B；计数器 3/3 |
 | 连接粘性 | 同一个连接发多个请求 | 只命中一个后端 |
 | hairpin 可解释 | `conntrack -L` 看双向映射 | 能指出 SNAT 前后的源和目的 |
 | 清理干净 | `DEL` 后 `ip link`、`iptables -t nat -S` | 没有残留 veth 和规则 |

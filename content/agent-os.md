@@ -66,7 +66,7 @@ Agent OS 不解决“让 agent 更聪明”的问题。它解决的是：**让 a
 | 11 | ABI for LLMs | 怎么设计有类型、有错误分类的操作？ | [Capstone](aos-capstone.html) |
 | 12 | Capstone | 你的 Agent OS 能证明哪些性质？ | [Capstone](aos-capstone.html) |
 
-## 实验
+## 实验一览
 
 | # | 实验 | 交付物 | 环境 |
 |---|---|---|---|
@@ -305,7 +305,7 @@ staging/            manifests/
 
 看图时注意：`current` 是唯一的提交点；读者必须先读 `current`，再按 manifest 取文件，才能看到一致的一组版本。如果读者直接按路径逐个打开，仍可能读到新旧混合，这是多文件事务的边界，不是实现 bug。
 
-overlayfs 可以把“切换”变成改挂载点：lower 只读，upper 收变更，提交时换视图。reflink（`FICLONE`）让复制整个工作区变成 O(1) 的写时复制（copy-on-write, CoW），但依赖文件系统支持，btrfs 和 XFS 可以，ext4 不行。
+overlayfs 可以帮你实现写时复制，但**它换不了视图**：`mount`/`umount` 改的是挂载表，已经打开的文件描述符继续指向旧 inode，而 `mount --move` 撞上已有挂载点通常返回 `EBUSY`。所以"提交时换视图"这件事不能靠重挂载，得靠一个可以原子改名的间接层：版本目录加 `current` 符号链接，`rename` 那个链接。overlayfs 只负责让"从 lower 复制到 upper"变便宜（详见 [CN4](cn4.html) 的四个目录和 whiteout 讨论）。reflink（`FICLONE`）让复制整个工作区变成 O(1) 的写时复制（copy-on-write, CoW），但依赖文件系统支持，btrfs 和 XFS 可以，ext4 不行。
 
 ### 一次崩溃留下的状态
 
@@ -550,7 +550,7 @@ workspace quota 1,000k
 
 ### 和实验的关系
 
-课程没有单独的资源实验，这项工作放进 Capstone：在 ABI 里实现 `reserve`、`charge`、`quota.set`，用 fake 模型验证重试和子 agent 不能绕过预算。AOS1 的 `exec` 也要带预算参数。
+课程没有单独的资源实验，这项工作放进 Capstone：操作表里的 `budget.reserve` 就是这讲的落点（`budget.charge` 与 `quota.set` 是它的子路径，见 [Capstone 操作表](aos-capstone.html)），用 fake 模型验证重试和子 agent 不能绕过预算。AOS1 的 `exec` 也要带预算参数。
 
 ### 检查一下自己
 
@@ -596,7 +596,7 @@ B:       commit(epoch=13) -> 通过
 
 假设 A 在写一个 20 MB 的 manifest 时被 `SIGSTOP`。租约 10 秒后过期，B 拿到 epoch 13，开始写。30 秒后 A 恢复，它手里的 fd 还开着，缓冲区还在，它继续 `write`。如果 A 走的是 commit 路径，存储层会拒绝 epoch 12；如果 A 直接写文件，fencing 拦不住，因为它没经过检查点。这说明 fencing 要和隔离、能力撤销一起用：旧 owner 的写句柄要么被撤销，要么工作区按 epoch 分开，不能给它一个能直接写当前版本的 fd。
 
-etcd 的 lease、Kubernetes 的 `Lease` 对象、Chubby 的 sequencer、ZooKeeper 的 zxid 都提供单调序号，可以配合 fencing 使用。文件锁保护一个文件，租约保护一个角色；两者可以组合，不能互相替代。
+Chubby 的 sequencer 和 ZooKeeper 的 zxid 都提供单调序号，可以直接当 fencing token。etcd 和 Kubernetes 要分开说：etcd 的 lease 只有 TTL 和 `ID`（`LeaseID` 是随机 i64，不单调），要单调语义得自己把 revision 或版本号带进写路径；Kubernetes 的 `Lease` 对象只是一个带 `renewTime` 的资源，靠 `resourceVersion` 做乐观并发，`resourceVersion` 也不单调、不保证跨 key 可比。真正的单调 token 来自它们的线性一致写：拿返回值里的版本号当 token，而不是拿对象的 ID。文件锁保护一个文件，租约保护一个角色；两者可以组合，不能互相替代。
 
 ### 哪些是假设，哪些有现成机制
 
@@ -620,7 +620,7 @@ AOS5 要求实现 `lease.acquire/renew/release`，返回单调递增的 epoch；
 2. 它可能尝试写，但 commit 应被存储层拒绝，因为它的 epoch 小于当前最大值。如果它绕过 commit 直接写文件，就需要能力撤销或按 epoch 隔离工作区来拦住。
 3. 文件锁保护一个文件，粒度小，生命周期短；租约保护一个角色或工作区，跨多个文件和操作。两者可以组合，不能互相替代。
 
-**依据**：Chubby（OSDI 2006）的 sequencer；ZooKeeper（USENIX ATC 2010）的 zxid；etcd lease 与 Kubernetes Lease 文档；AOS5 任务书。
+**依据**：Chubby（OSDI 2006）第 3 节的 sequencer；ZooKeeper（USENIX ATC 2010）的 zxid；etcd `LeaseGrant` / `LeaseKeepAlive` 文档与 `mvcc` revision 语义；Kubernetes `Lease` 与 `resourceVersion` 文档；AOS5 任务书。
 
 **作业**：[AOS5](aos5.html) · [作业总览](labs.html)
 
@@ -808,7 +808,7 @@ M1 ABI -> M2 隔离 -> M3 commit -> M4 snapshot -> M5 lease -> M6 审计 -> M7 �
 
 **作业**：[Capstone](aos-capstone.html) · [作业总览](labs.html)
 
-## 实验
+## 实验任务书
 
 | # | 实验 | 交付物 | 环境 |
 |---|---|---|---|

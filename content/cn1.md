@@ -18,7 +18,7 @@
 SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs ./judge/run.sh infra02 cn1
 ```
 
-全部通过时，你会看到 12 行 `PASS`（机器上没有 `lsns` 时是 11 行），最后是 `总分：20/20` 和“自动检查全部通过”。这些检查覆盖命令执行、退出码、stderr、PID/mount/network/IPC 四个 namespace、rootfs 切换、容器本地 `/proc`、hostname 和 `--memory` 参数。内存上限是否真的触发 OOM 不在自动检查里，要自己手工验证一次。
+全部通过时，你会看到 12 行 `PASS`（没有 `lsns`、或读不到 host 的 cgroup 树时，对应两项显示 `SKIP`），最后是 `总分：20/20` 和“自动检查全部通过”。这些检查覆盖命令执行、退出码、stderr、PID/mount/network/IPC 四个 namespace、rootfs 切换、容器本地 `/proc`、hostname、`--memory` 参数，以及运行期间是否真的存在 `memory.max=64M` 的 cgroup。内存上限是否真的触发 OOM kill 仍是人工验收项——自动检查只证明上限被写进去了。
 
 难点不在系统调用数量，而在顺序：namespace 要在 `clone` 时建，`/proc` 要在新的 PID namespace 里挂，rootfs 要在 mount namespace 里切，cgroup 要在子进程还活着时写。顺序错一步，失败信息通常不会指向真正的原因。
 
@@ -68,7 +68,7 @@ sudo chroot "$rootfs" /bin/sh -c 'echo rootfs-ok'   # 预期 rootfs-ok
 
 ## 代码地图
 
-仓库里有一份起步骨架 `starters/cn1/`，把命令行解析、父子进程切换和退出码透传搭好了，可以直接 `go build`，两处核心逻辑（创建 namespace 前后的准备、切根流程）留成 TODO。想自己从零写也可以，下面给出同样的职责划分。
+仓库里有一份起步骨架 `starters/cn1/`，把命令行解析、父子进程切换和退出码透传搭好了，可以直接 `go build`，核心逻辑分成 7 处 `TODO(n)`（n 从 2 到 8）：cgroup 建组与迁移、mount propagation、bind rootfs、挂 `/proc`、`pivot_root`、`sethostname`。想自己从零写也可以，下面给出同样的职责划分。
 
 最小实现只需要一个 `main.go`。建议按职责拆成三块，调试时容易定位：
 
@@ -178,7 +178,7 @@ func child() {
 
 `syscall.Exec` 不搜 `PATH`，而 judge 会用裸名字调 `hostname`。切根后用 `exec.LookPath` 解析；必要时在 child 里设默认 `PATH=/bin:/usr/bin:/sbin:/usr/sbin`。
 
-`setupCgroup` 不要直接把 `"64M"` 写进 `memory.max`。先把后缀换算成字节，再写十进制数字，可以避开不同内核版本对单位后缀的差异。创建子组后先写 `cgroup.procs`，再写 `memory.max`；顺序反过来也能工作，但中间会有一小段没有限制的窗口。
+`setupCgroup` 不要直接把 `"64M"` 写进 `memory.max`。先把后缀换算成字节，再写十进制数字，可以避开不同内核版本对单位后缀的差异。顺序是先建子组、先把上限写好，再 `Start()`，最后立刻把子进程的 TID 写进 `cgroup.procs`。反过来（先启动再设上限）不会让限制失效，但子进程可能在被迁进 cgroup 之前就 fork 出孙进程，那段时间完全不受限；`memory.max` 是跟着 cgroup 走的，所以孙进程一旦随父进程一起迁入就同样受限，真正漏掉的是"迁移前的瞬间"。骨架里的 TODO(2)(3) 就是这两步。
 
 ## 阶段拆解
 
@@ -254,11 +254,11 @@ sudo SUBMISSION=~/labs/cn1/cn1 CN1_ROOTFS=~/labs/cn1-rootfs \
   ./judge/run.sh infra02 cn1
 ```
 
-预期 11 或 12 行 `PASS`，`总分：20/20`。通过标志：最后一行是“自动检查全部通过”。
+预期 11–13 行 `PASS`（不支持的检查显示 `SKIP`），`总分：20/20`。通过标志：最后一行是“自动检查全部通过”。
 
 ## 验收与测试
 
-judge 的检查项和它们在看什么如下。检查 10 只在机器上有 `lsns` 时运行，所以总数是 11 或 12。
+judge 的检查项和它们在看什么如下。共 13 项，其中第 10 项（`lsns`）和第 13 项（读 host 的 cgroup 树）在环境不支持时显示 `SKIP`，所以 `PASS` 的行数可能是 11、12 或 13。
 
 | # | 检查 | 它在看什么 |
 |---|---|---|
@@ -271,11 +271,12 @@ judge 的检查项和它们在看什么如下。检查 10 只在机器上有 `ls
 | 7 | create a new IPC namespace | `/proc/self/ns/ipc` 不同 |
 | 8 | switch to the supplied rootfs | 脚本写进 `CN1_ROOTFS` 的 marker 在 `/` 可见 |
 | 9 | mount a container-local /proc | `/proc/self/status` 可读，宿主脚本的 PID 不可见 |
-| 10 | leave no extra PID namespace | 运行前后 `lsns -t pid` 的行数不增加 |
+| 10 | leave no extra PID namespace | 运行前后 `lsns -t pid` 的行数不增加（`lsns` 读不到时 SKIP） |
 | 11 | set a separate hostname | 容器里的 `hostname` 非空且不等于宿主 |
 | 12 | accept a memory limit | `--memory 64M` 不破坏命令执行 |
+| 13 | set memory.max while running | 容器运行期间确实存在一个 `memory.max=67108864` 的 cgroup（读不到 host cgroup 树时 SKIP） |
 
-自动检查不验证 OOM，也不验证 `--memory` 的数值是否真的生效。手工验收补两项：64M 下 `memhog` 被杀，`memory.events` 里 `oom_kill` 至少为 1；退出后 `ls /sys/fs/cgroup | grep cn1` 没有输出。命令被信号杀死时用 128+signal 还是别的码，契约没写。
+自动检查验证的是"上限被写进去了"，不是"超限会被杀"。手工验收补两项：64M 下 `memhog` 被杀、`memory.events` 里 `oom_kill` 至少为 1；退出后 `ls /sys/fs/cgroup | grep cn1` 没有输出。命令被信号杀死时用 128+signal 还是别的码，契约没写。
 
 ## 常见错误
 
@@ -331,7 +332,7 @@ sudo strace -f -e trace=clone,unshare,mount,pivot_root,setns,execve,wait4 \
 
 ## 提交前检查
 
-- [ ] `sudo ./judge/run.sh infra02 cn1` 显示 11 或 12 项全 `PASS`，`总分：20/20`。
+- [ ] `sudo ./judge/run.sh infra02 cn1` 显示 13 项里没有 `FAIL`（不支持的环境项是 `SKIP`），`总分：20/20`。
 - [ ] 手工 OOM 通过：`--memory 64M` 下 `memhog` 被杀，`memory.events` 的 `oom_kill` 至少为 1。
 - [ ] `ls /sys/fs/cgroup | grep cn1` 没有输出；`mount | grep cn1-rootfs` 没有输出。
 - [ ] 连续跑三次 judge，结果一致；没有偶发的 `cgroup.procs: no such process`。

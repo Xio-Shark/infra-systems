@@ -59,7 +59,20 @@ cat /proc/sys/kernel/yama/ptrace_scope    # 1（没有这个文件也行）
 
 `internal/abi/ops.go` 是唯一的协议真相源：操作名、参数类型、`Status`、`ErrorClass`、操作表都放这里，daemon 和 CLI 都 import 它。`internal/daemon/server.go` 负责接受连接、解码请求、按 `op` 分发；`idem.go` 是持久化幂等表；`audit.go` 追加写审计事件。`internal/sandbox/spawn_linux.go` 里是创建任务的代码，`cgroup.go` 管控制组，`seccomp.go` 装过滤器，`exec/exec.go` 在任务内跑命令、收 stdout。
 
-`tests/` 下的脚本是验收标准，不要改。它们只通过 Unix socket 和 `aosctl` 说话，不 import 你的内部包。socket 路径用 `$XDG_RUNTIME_DIR/aos1.sock`，测试会设这个变量；daemon 启动时如果文件已存在，先确认没有活着的 daemon，再删。
+仓库 `starters/aos/aos1/tests/` 里有现成的验收脚本，复制到 `~/labs/aos1/tests/` 再用。它们只通过 Unix socket 和 `aosctl` 说话，不 import 你的内部包；socket 路径用 `$XDG_RUNTIME_DIR/aos1.sock`，脚本会设这个变量。`starters/aos/aos1/testdata/fake-tool/` 是同目录配套的测试工具（`hog` 分配内存、`read` 读文件），`go build -o testdata/fake-tool ./testdata/fake-tool` 即可。脚本的契约和边界见 `starters/aos/README.md`。
+
+## CLI 契约 {#cli}
+
+`starters/aos/aos1/tests/run.sh` 只通过下面这些命令和你说话；参数名可以不同，语义必须一致。`aosctl` 的 stdout 是单行 JSON，含 `status`、`result`、`effects`、`evidence` 四个字段。
+
+| 命令 | 语义 |
+|---|---|
+| `aosctl exec --idem KEY [--memory 128M] -- CMD…` | 执行命令并返回结构化结果；同一个 `KEY` 重复提交返回同一个 `exec_id`，命令不重复执行 |
+| `aosctl terminate --exec ID` | 结束一次执行（先 `SIGTERM`，超时 `cgroup.kill`） |
+| `aosctl spawn` | 只创建任务沙箱，不执行命令；返回 `task_id`、pidfd、cgroup 路径 |
+| `aosctl daemon restart` | 重启 daemon 并保留持久化幂等表（可选；没有时 lifecycle 用例会 SKIP） |
+
+`result` 里至少要能取到 `exec_id`、`exit`、`stdout`；`evidence` 是非空字符串（审计 id）。`stdout_sha256` 是加分项，脚本在缺失时记为 SKIP 而不是失败。
 
 ## 接口与数据流
 
@@ -164,7 +177,11 @@ readlink /proc/self/ns/pid   # 两个 inode 不同
 
 阶段 4 加 seccomp 和 `openat2`。测试工具在 exec 前装 seccomp：默认拒绝，放行 `execve`、`openat`、`openat2`、`read`、`write`、`mmap`、`brk`、`exit_group` 等最小集合；同时把每次文件打开改成 `openat2(dirfd, path, RESOLVE_BENEATH|RESOLVE_NO_MAGICLINKS)`。跑 `testdata/fake-tool read ~/.ssh/id_rsa`，预期 `EACCES` 或 `EXDEV`，`strace` 里能看到拒绝发生在内核。`grep -E 'Seccomp|NoNewPrivs' /proc/<pid>/status` 应为 `Seccomp: 2` 和 `NoNewPrivs: 1`。
 
-阶段 5 加生命周期和持久化。`terminate` 先 `pidfd_send_signal(SIGTERM)`，等 2 秒，再写 `cgroup.kill`，最后 `waitid(P_PIDFD)` 回收，并等 `cgroup.events` 的 `populated` 变 0。把幂等表落到磁盘，daemon 重启后同一个 `idem` 仍返回旧结果。跑 `./tests/run.sh lifecycle`，预期三行：退出码 143 或 137（取决于优雅退出是否成功）、`populated=0`、`restart_idem=hit`。
+阶段 5 加生命周期和持久化。`terminate` 先 `pidfd_send_signal(SIGTERM)`，等 2 秒，再写 `cgroup.kill`，最后等 `cgroup.events` 的 `populated` 变 0。把幂等表落到磁盘，daemon 重启后同一个 `idem` 仍返回旧结果。
+
+`waitid(P_PIDFD)` 在这里会用不了：命令进程是 task init `fork` 出来的，daemon 不是它的父进程，`waitid` 返回 `ECHILD`。能回收它的是 task init —— 让 init 当 subreaper（或直接作为它的父进程）并负责 `wait4`，把退出码和 `ru_*` 通过 socket 报回 daemon。daemon 侧只观察：`pidfd` 的 `poll` 变成可读说明进程已退出，`cgroup.events` 的 `populated=0` 说明整棵进程树都没了。回收责任落在 init 上，daemon 负责记账和超时兜底（超时就 `cgroup.kill`，再由 init 回收）。
+
+跑 `./tests/run.sh lifecycle`，它要求重启 daemon 后同一个 `idem` 仍返回旧结果；实现没有 `daemon restart` 子命令时脚本会 `SKIP` 并提示手工验证。
 
 ## 验收清单
 
@@ -172,9 +189,9 @@ readlink /proc/self/ns/pid   # 两个 inode 不同
 
 - [ ] `spawn` 的证据包含 `task_id`、pidfd 编号、cgroup 路径，以及 `NSpid` 的两行输出。
 - [ ] `exec` 的证据包含 `exit`、stdout 的 sha256、audit id；重复请求的 `exec_id` 相同。
-- [ ] `ssh-denied`：工具读 `~/.ssh/id_rsa` 失败，`strace` 显示 `EACCES`/`EXDEV`，且测试工具没有吞掉错误。
+- [ ] `ssh-denied`：工具读 `~/.ssh/id_rsa` 失败，`strace` 显示 `EACCES`/`EXDEV`，且测试工具没有吞掉错误。注意 rootfs 若是最小根，`~/.ssh/id_rsa` 在沙箱里本就不存在，这只能证明"读不到"，证明不了"路径守卫生效"——要证明后者，把宿主的一个已知文件 bind 进沙箱或在工作区内放同样的内容再读。
 - [ ] `oom`：退出码 137，`memory.events` 的 `oom_kill` 至少为 1。
-- [ ] `terminate`：`populated=0`，`waitid` 返回，进程表里没有残留。
+- [ ] `terminate`：`populated=0`，task init 回收了所有子进程（`wait4` 成功或进程表里没有 `<defunct>`），进程表里没有残留。
 - [ ] `restart-idem`：重启 daemon 后同一 `idem` 不重复执行。
 - [ ] 接口表七个字段齐全，`spawn`/`exec` 的创建者、namespace、cgroup、句柄写清楚。
 - [ ] 300 字复盘，按[评分标准](grading.html#reflection)的五问。
@@ -205,7 +222,7 @@ strace -f -e trace=clone3,execve,openat2,pidfd_open,pidfd_send_signal,waitid \
 
 `clone3` 的返回值是子进程 TID；`execve` 之前应该先看到写 `cgroup.procs`。如果 `execve` 在 cgroup 写入之前发生，同步管道没起作用。
 
-状态看 `/proc`：`NSpid` 确认 namespace，`Seccomp` 和 `NoNewPrivs` 确认过滤器，`CapEff` 确认 capability 已 drop，`/proc/<pid>/cgroup` 确认 cgroup 归属。pidfd 本身是匿名 inode，`ls -l /proc/<daemon>/fd` 能看到 `anon_inode:[pidfd]`；对 pidfd `poll` 在进程变成僵尸时可读，`waitid(P_PIDFD)` 回收后变成 `POLLHUP`。
+状态看 `/proc`：`NSpid` 确认 namespace，`Seccomp` 和 `NoNewPrivs` 确认过滤器，`CapEff` 确认 capability 已 drop，`/proc/<pid>/cgroup` 确认 cgroup 归属。pidfd 本身是匿名 inode，`ls -l /proc/<daemon>/fd` 能看到 `anon_inode:[pidfd]`；对 pidfd `poll` 在进程变成僵尸时可读；被 `wait4` 真正回收（由 task init 做）之后变成 `POLLHUP`。daemon 自己 `waitid` 会拿到 `ECHILD`，不要用它来判断回收完成。
 
 cgroup 看三个文件：`cgroup.events` 的 `populated`、`memory.events` 的 `oom_kill`、`memory.current` 的实时用量。取消后 `populated` 迟迟不变 0，说明有子进程逃到了别的 cgroup，或者 init 没死。审计日志按 task_id 查：`./aosctl audit --task t-01J8`，每条事件要能和 `strace` 的时间对上；对不上就说明有路径绕过了 daemon。
 
