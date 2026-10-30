@@ -68,8 +68,12 @@ jobs:
       - name: Check judge wiring
         run: |
           # judge 应该能在没有实现的情况下立刻给出 SKIP，而不是挂到超时。
+          # --json 的退出码在非 PASS 时是 1（这是有意的），所以要先关掉 set -e
+          # 再取输出，否则 shell 会在解析之前就失败。
           ./judge/run.sh --list >/dev/null
+          set +e
           out=$(./judge/run.sh infra01 lab1 --json)
+          set -e
           echo "$out" | python3 -c '
           import json,sys
           r=json.load(sys.stdin)[0]
